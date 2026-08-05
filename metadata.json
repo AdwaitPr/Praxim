@@ -1,0 +1,6 @@
+{
+  "name": "Praxim",
+  "description": "Luminate: Intent-First On-Device Screen Intelligence & Micro-HUD",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
