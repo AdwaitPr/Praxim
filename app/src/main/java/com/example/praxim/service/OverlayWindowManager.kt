@@ -28,27 +28,27 @@ class OverlayWindowManager(
     private var composeView: ComposeView? = null
     private var isExpanded = false
 
-    fun createOverlayView(content: @Composable () -> Unit): ComposeView {
-        val view = ComposeView(context).apply {
-            setViewTreeLifecycleOwner(lifecycleOwner)
-            setViewTreeSavedStateRegistryOwner(savedStateRegistryOwner)
-            setViewTreeViewModelStoreOwner(viewModelStoreOwner)
+    fun mount(content: @Composable () -> Unit) {
+        if (composeView != null) return
+
+        composeView = ComposeView(context).apply {
             setContent {
                 content()
             }
         }
-        composeView = view
-        return view
-    }
 
-    fun attachToWindow() {
-        composeView?.let { view ->
-            val params = getCollapsedLayoutParams()
-            try {
-                windowManager.addView(view, params)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+        // CRITICAL COMPOSE BRIDGE
+        composeView?.let {
+            it.setViewTreeLifecycleOwner(lifecycleOwner)
+            it.setViewTreeSavedStateRegistryOwner(savedStateRegistryOwner)
+            it.setViewTreeViewModelStoreOwner(viewModelStoreOwner)
+        }
+
+        val params = getCollapsedLayoutParams()
+        try {
+            windowManager.addView(composeView, params)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -65,10 +65,10 @@ class OverlayWindowManager(
         }
     }
 
-    fun detachFromWindow() {
+    fun destroy() {
         composeView?.let { view ->
             try {
-                windowManager.removeView(view)
+                windowManager.removeViewImmediate(view)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
