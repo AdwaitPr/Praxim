@@ -52,6 +52,11 @@ android {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
   }
+  kotlin {
+    compilerOptions {
+      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+    }
+  }
   buildFeatures {
     compose = true
     buildConfig = true
@@ -82,6 +87,7 @@ dependencies {
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)
+  implementation(libs.androidx.compose.foundation)
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
@@ -90,9 +96,9 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
-  implementation("androidx.lifecycle:lifecycle-service:2.8.7")
+  implementation(libs.androidx.lifecycle.service)
   implementation(libs.androidx.navigation.compose)
-  implementation("com.google.mlkit:text-recognition:16.0.1")
+  implementation(libs.play.services.mlkit.text.recognition)
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   // implementation(libs.coil.compose)
