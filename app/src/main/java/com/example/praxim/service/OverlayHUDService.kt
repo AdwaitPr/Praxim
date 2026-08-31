@@ -4,18 +4,20 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.provider.Settings
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistry
@@ -41,9 +43,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class OverlayHUDService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
+class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModelStoreOwner {
 
-    private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
     private val store = ViewModelStore()
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -57,22 +58,15 @@ class OverlayHUDService : Service(), LifecycleOwner, SavedStateRegistryOwner, Vi
 
     private lateinit var repository: ScanHistoryRepository
 
-    override val lifecycle: Lifecycle
-        get() = lifecycleRegistry
-
     override val savedStateRegistry: SavedStateRegistry
         get() = savedStateRegistryController.savedStateRegistry
 
     override val viewModelStore: ViewModelStore
         get() = store
 
-    override fun onBind(intent: Intent?): IBinder? = null
-
     override fun onCreate() {
         super.onCreate()
         savedStateRegistryController.performRestore(null)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
 
         val database = PraximDatabase.getDatabase(this)
         repository = ScanHistoryRepository(database.scanHistoryDao())
@@ -80,7 +74,7 @@ class OverlayHUDService : Service(), LifecycleOwner, SavedStateRegistryOwner, Vi
         startForegroundServiceNotification()
 
         windowManager = OverlayWindowManager(this, this, this, this)
-        windowManager?.createOverlayView {
+        windowManager?.mount {
             val mode by displayMode.collectAsState()
             val settings by hudSettings.collectAsState()
 
@@ -110,8 +104,6 @@ class OverlayHUDService : Service(), LifecycleOwner, SavedStateRegistryOwner, Vi
                 }
             }
         }
-
-        windowManager?.attachToWindow()
     }
 
     private fun triggerOnDeviceScan() {
@@ -195,27 +187,31 @@ class OverlayHUDService : Service(), LifecycleOwner, SavedStateRegistryOwner, Vi
             .setOngoing(true)
             .build()
 
-        startForeground(1001, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(1001, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(1001, notification)
+        }
     }
 
     override fun onDestroy() {
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-        store.clear()
-        windowManager?.detachFromWindow()
         super.onDestroy()
+        windowManager?.destroy()
+        store.clear()
+        windowManager = null
     }
 
     companion object {
-        fun startService(context: Context) {
-            val intent = Intent(context, OverlayHUDService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+        fun start(context: Context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
+                return
             }
+
+            val intent = Intent(context, OverlayHUDService::class.java)
+            ContextCompat.startForegroundService(context, intent)
         }
 
-        fun stopService(context: Context) {
+        fun stop(context: Context) {
             val intent = Intent(context, OverlayHUDService::class.java)
             context.stopService(intent)
         }

@@ -265,11 +265,11 @@ fun HomeScreen(
                                         )
                                         context.startActivity(intent)
                                     } else {
-                                        OverlayHUDService.startService(context)
+                                        OverlayHUDService.start(context)
                                         isServiceRunning = true
                                     }
                                 } else {
-                                    OverlayHUDService.stopService(context)
+                                    OverlayHUDService.stop(context)
                                     isServiceRunning = false
                                 }
                             },
