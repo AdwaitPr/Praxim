@@ -31,10 +31,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.DarkObsidian
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.NeonGreen
-import com.example.ui.theme.TextSecondaryDark
+import com.example.praxim.ui.theme.DarkObsidian
+import com.example.praxim.ui.theme.GlassBorder
+import com.example.praxim.ui.theme.NeonGreen
+import com.example.praxim.ui.theme.TextSecondaryDark
 
 @Composable
 fun ProcessingShimmerView(

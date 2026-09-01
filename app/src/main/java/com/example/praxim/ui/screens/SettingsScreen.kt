@@ -37,13 +37,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.praxim.ui.hud.HudSettings
-import com.example.ui.theme.AmoledBlack
-import com.example.ui.theme.DarkObsidian
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.NeonGreen
-import com.example.ui.theme.SurfaceDark
-import com.example.ui.theme.TextPrimaryDark
-import com.example.ui.theme.TextSecondaryDark
+import com.example.praxim.ui.theme.AmoledBlack
+import com.example.praxim.ui.theme.DarkObsidian
+import com.example.praxim.ui.theme.GlassBorder
+import com.example.praxim.ui.theme.NeonGreen
+import com.example.praxim.ui.theme.SurfaceDark
+import com.example.praxim.ui.theme.TextPrimaryDark
+import com.example.praxim.ui.theme.TextSecondaryDark
 
 @Composable
 fun SettingsScreen(
