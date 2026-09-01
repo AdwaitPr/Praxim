@@ -4,10 +4,10 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -23,7 +23,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
-import com.example.MainActivity
+import com.example.praxim.MainActivity
 import com.example.praxim.data.PraximDatabase
 import com.example.praxim.data.ScanHistoryEntity
 import com.example.praxim.data.ScanHistoryRepository
@@ -34,7 +34,7 @@ import com.example.praxim.ui.hud.ExpandedActionHudView
 import com.example.praxim.ui.hud.HudDisplayMode
 import com.example.praxim.ui.hud.HudSettings
 import com.example.praxim.ui.hud.ProcessingShimmerView
-import com.example.ui.theme.PraximTheme
+import com.example.praxim.ui.theme.PraximTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -50,6 +50,8 @@ class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModel
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var windowManager: OverlayWindowManager? = null
+    private var screenCaptureManager: ScreenCaptureManager? = null
+
     private val _displayMode = MutableStateFlow<HudDisplayMode>(HudDisplayMode.Collapsed)
     val displayMode = _displayMode.asStateFlow()
 
@@ -106,39 +108,71 @@ class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModel
         }
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "ACTION_START_WITH_PROJECTION") {
+            val resultCode = intent.getIntExtra("EXTRA_RESULT_CODE", 0)
+            val resultData: Intent? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra("EXTRA_RESULT_DATA", Intent::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra("EXTRA_RESULT_DATA")
+            }
+
+            if (resultCode != 0 && resultData != null) {
+                val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                val mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
+                mediaProjection?.let { screenCaptureManager = ScreenCaptureManager(this, it) }
+            }
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
     private fun triggerOnDeviceScan() {
         serviceScope.launch {
             _displayMode.value = HudDisplayMode.Processing
             windowManager?.updateLayout(expanded = true)
 
-            // Simulate <100ms local RAM Frame Buffer OCR parsing
-            delay(180)
+            screenCaptureManager?.captureSingleFrame(
+                onBitmapReady = { bitmap ->
+                    serviceScope.launch {
+                        try {
+                            val parsed = EntityRecognizerEngine.processFrame(bitmap)
+                            if (parsed.isNotEmpty()) {
+                                _displayMode.value = HudDisplayMode.Expanded(parsed)
 
-            // Check active clipboard / screen text
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-            val clipText = clipboard?.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
-
-            val defaultSampleScreenText = if (clipText.isNotBlank()) {
-                clipText
-            } else {
-                "Swiggy Delivery Payment: ₹420 to merchant.swiggy@ybl or UPI ID swiggy.pay@okicici. Bank IFSC: SBIN0001234. Helpline +91 9876543210. Track shipment AWB102938475."
-            }
-
-            val parsed = EntityRecognizerEngine.parseTextEntities(defaultSampleScreenText)
-
-            _displayMode.value = HudDisplayMode.Expanded(parsed)
-
-            // Save scanned entities to local database
-            parsed.forEach { entity ->
-                repository.insert(
-                    ScanHistoryEntity(
-                        rawText = entity.rawText,
-                        formattedValue = entity.formattedValue,
-                        entityType = entity.type.name,
-                        primaryActionLabel = entity.primaryActionLabel,
-                        timestamp = entity.timestamp
-                    )
-                )
+                                parsed.forEach { entity ->
+                                    repository.insert(
+                                        ScanHistoryEntity(
+                                            rawText = entity.rawText,
+                                            formattedValue = entity.formattedValue,
+                                            entityType = entity.type.name,
+                                            primaryActionLabel = entity.primaryActionLabel,
+                                            timestamp = entity.timestamp
+                                        )
+                                    )
+                                }
+                            } else {
+                                // Briefly show processing then collapse if nothing found
+                                delay(300)
+                                _displayMode.value = HudDisplayMode.Collapsed
+                                windowManager?.updateLayout(expanded = false)
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            _displayMode.value = HudDisplayMode.Collapsed
+                            windowManager?.updateLayout(expanded = false)
+                        }
+                    }
+                },
+                onError = {
+                    it.printStackTrace()
+                    _displayMode.value = HudDisplayMode.Collapsed
+                    windowManager?.updateLayout(expanded = false)
+                }
+            ) ?: run {
+                // Fallback if ScreenCaptureManager is not initialized
+                _displayMode.value = HudDisplayMode.Collapsed
+                windowManager?.updateLayout(expanded = false)
             }
         }
     }
@@ -196,6 +230,8 @@ class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModel
 
     override fun onDestroy() {
         super.onDestroy()
+        screenCaptureManager?.destroy()
+        screenCaptureManager = null
         windowManager?.destroy()
         store.clear()
         windowManager = null

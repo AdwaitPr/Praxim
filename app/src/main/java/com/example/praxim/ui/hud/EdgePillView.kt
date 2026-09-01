@@ -32,8 +32,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.NeonGreen
+import com.example.praxim.ui.theme.GlassBorder
+import com.example.praxim.ui.theme.NeonGreen
 import kotlin.math.roundToInt
 
 @Composable

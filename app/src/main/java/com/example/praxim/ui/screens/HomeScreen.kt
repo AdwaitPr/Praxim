@@ -67,15 +67,15 @@ import androidx.compose.ui.unit.sp
 import com.example.praxim.data.ScanHistoryEntity
 import com.example.praxim.data.ScanHistoryRepository
 import com.example.praxim.service.OverlayHUDService
-import com.example.ui.theme.AmoledBlack
-import com.example.ui.theme.DarkObsidian
-import com.example.ui.theme.ElectricBlue
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonGreen
-import com.example.ui.theme.SurfaceDark
-import com.example.ui.theme.TextPrimaryDark
-import com.example.ui.theme.TextSecondaryDark
+import com.example.praxim.ui.theme.AmoledBlack
+import com.example.praxim.ui.theme.DarkObsidian
+import com.example.praxim.ui.theme.ElectricBlue
+import com.example.praxim.ui.theme.GlassBorder
+import com.example.praxim.ui.theme.NeonCyan
+import com.example.praxim.ui.theme.NeonGreen
+import com.example.praxim.ui.theme.SurfaceDark
+import com.example.praxim.ui.theme.TextPrimaryDark
+import com.example.praxim.ui.theme.TextSecondaryDark
 
 @Composable
 fun HomeScreen(

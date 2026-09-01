@@ -4,19 +4,26 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.Toast
 import com.example.praxim.model.EntityType
 import com.example.praxim.model.NormalizedRect
 import com.example.praxim.model.RecognizedEntity
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.UUID
 import java.util.regex.Pattern
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 object EntityRecognizerEngine {
 
     // Regex Patterns for Indian digital entity ecosystem
     private val UPI_PATTERN = Pattern.compile(
-        "\\b[a-zA-Z0-9.\\-_]{2,256}@[a-zA-Z0-9]{2,64}\\b",
+        "\\b[a-zA-Z0-9.\\-_]{2,256}@[a-zA-Z]{2,64}\\b",
         Pattern.CASE_INSENSITIVE
     )
 
@@ -25,11 +32,11 @@ object EntityRecognizerEngine {
     )
 
     private val PHONE_PATTERN = Pattern.compile(
-        "\\b(?:\\+91[\\s\\-]?)?[6-9]\\d{4}[\\s\\-]?\\d{5}\\b"
+        "\\b(?:\\+91[\\-\\s]?)?[6-9]\\d{9}\\b"
     )
 
     private val URL_PATTERN = Pattern.compile(
-        "\\b(?:https?://|www\\.)[a-zA-Z0-9.\\-_/=?%&#]+\\b",
+        "\\bhttps?://[^\\s]+\\b",
         Pattern.CASE_INSENSITIVE
     )
 
@@ -38,36 +45,185 @@ object EntityRecognizerEngine {
         Pattern.CASE_INSENSITIVE
     )
 
-    /**
-     * Parses input text locally in under 10ms using high-performance regex matching.
-     */
+    private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+
+    suspend fun processFrame(bitmap: Bitmap): List<RecognizedEntity> = suspendCancellableCoroutine { continuation ->
+        val image = InputImage.fromBitmap(bitmap, 0)
+        val imageWidth = bitmap.width.toFloat()
+        val imageHeight = bitmap.height.toFloat()
+
+        recognizer.process(image)
+            .addOnSuccessListener { visionText ->
+                val entities = mutableListOf<RecognizedEntity>()
+                val seenValues = mutableSetOf<String>()
+
+                for (block in visionText.textBlocks) {
+                    val rawText = block.text
+                    val bbox = block.boundingBox
+                    val normalizedRect = if (bbox != null && imageWidth > 0 && imageHeight > 0) {
+                        NormalizedRect(
+                            left = bbox.left / imageWidth,
+                            top = bbox.top / imageHeight,
+                            right = bbox.right / imageWidth,
+                            bottom = bbox.bottom / imageHeight
+                        )
+                    } else {
+                        NormalizedRect(0f, 0f, 0f, 0f)
+                    }
+
+                    // UPI
+                    val upiMatcher = UPI_PATTERN.matcher(rawText)
+                    while (upiMatcher.find()) {
+                        val upi = upiMatcher.group().trim().lowercase()
+                        if (upi !in seenValues) {
+                            seenValues.add(upi)
+                            entities.add(
+                                RecognizedEntity(
+                                    id = UUID.randomUUID().toString(),
+                                    rawText = upi,
+                                    formattedValue = upi,
+                                    type = EntityType.UPI_ID,
+                                    primaryActionLabel = "Pay via UPI",
+                                    secondaryActionLabel = "Copy UPI ID",
+                                    boundingBox = normalizedRect
+                                )
+                            )
+                        }
+                    }
+
+                    // IFSC
+                    val ifscMatcher = IFSC_PATTERN.matcher(rawText)
+                    while (ifscMatcher.find()) {
+                        val ifsc = ifscMatcher.group().trim().uppercase()
+                        if (ifsc !in seenValues) {
+                            seenValues.add(ifsc)
+                            val bankName = getBankNameFromIfsc(ifsc)
+                            entities.add(
+                                RecognizedEntity(
+                                    id = UUID.randomUUID().toString(),
+                                    rawText = ifsc,
+                                    formattedValue = "$ifsc ($bankName)",
+                                    type = EntityType.IFSC_CODE,
+                                    primaryActionLabel = "Copy IFSC & Bank Details",
+                                    secondaryActionLabel = "Verify Bank & Branch",
+                                    boundingBox = normalizedRect
+                                )
+                            )
+                        }
+                    }
+
+                    // Phone
+                    val phoneMatcher = PHONE_PATTERN.matcher(rawText)
+                    while (phoneMatcher.find()) {
+                        val phone = phoneMatcher.group().trim().replace(" ", "").replace("-", "")
+                        val cleanPhone = if (!phone.startsWith("+91")) "+91$phone" else phone
+                        if (cleanPhone !in seenValues) {
+                            seenValues.add(cleanPhone)
+                            entities.add(
+                                RecognizedEntity(
+                                    id = UUID.randomUUID().toString(),
+                                    rawText = phoneMatcher.group().trim(),
+                                    formattedValue = cleanPhone,
+                                    type = EntityType.PHONE_NUMBER,
+                                    primaryActionLabel = "Call / WhatsApp",
+                                    secondaryActionLabel = "Copy Number",
+                                    boundingBox = normalizedRect
+                                )
+                            )
+                        }
+                    }
+
+                    // URL
+                    val urlMatcher = URL_PATTERN.matcher(rawText)
+                    while (urlMatcher.find()) {
+                        val url = urlMatcher.group().trim()
+                        if (url.lowercase() !in seenValues) {
+                            seenValues.add(url.lowercase())
+                            entities.add(
+                                RecognizedEntity(
+                                    id = UUID.randomUUID().toString(),
+                                    rawText = url,
+                                    formattedValue = url,
+                                    type = EntityType.URL_LINK,
+                                    primaryActionLabel = "Open Link",
+                                    secondaryActionLabel = "Copy Link",
+                                    boundingBox = normalizedRect
+                                )
+                            )
+                        }
+                    }
+
+                    // Add generic fallback if no match
+                    if (entities.isEmpty() && rawText.isNotBlank()) {
+                         val snippet = rawText.take(80)
+                         entities.add(
+                             RecognizedEntity(
+                                 id = UUID.randomUUID().toString(),
+                                 rawText = rawText,
+                                 formattedValue = "\"$snippet\"",
+                                 type = EntityType.GENERIC_TEXT,
+                                 primaryActionLabel = "Copy Full Screen Text",
+                                 secondaryActionLabel = "Share Snippet",
+                                 boundingBox = normalizedRect
+                             )
+                         )
+                    }
+                }
+
+                // Fallback for completely empty parse but text exists
+                if (entities.isEmpty() && visionText.text.isNotBlank()) {
+                    val rawText = visionText.text
+                    val snippet = rawText.take(80)
+                    entities.add(
+                        RecognizedEntity(
+                            id = UUID.randomUUID().toString(),
+                            rawText = rawText,
+                            formattedValue = "\"$snippet\"",
+                            type = EntityType.GENERIC_TEXT,
+                            primaryActionLabel = "Copy Full Screen Text",
+                            secondaryActionLabel = "Share Snippet",
+                            boundingBox = NormalizedRect(0.05f, 0.30f, 0.95f, 0.60f)
+                        )
+                    )
+                }
+
+                if (continuation.isActive) {
+                    continuation.resume(entities)
+                }
+            }
+            .addOnFailureListener { e ->
+                if (continuation.isActive) {
+                    continuation.resumeWithException(e)
+                }
+            }
+    }
+
+    // Keep existing parseTextEntities for any legacy callers that just pass strings
     fun parseTextEntities(rawScreenText: String): List<RecognizedEntity> {
         val results = mutableListOf<RecognizedEntity>()
         val seenValues = mutableSetOf<String>()
 
-        if (rawScreenText.isBlank()) return emptyList()
-
-        // 1. UPI Handles
+        // 1. UPI IDs
         val upiMatcher = UPI_PATTERN.matcher(rawScreenText)
         while (upiMatcher.find()) {
-            val vpa = upiMatcher.group().trim()
-            if (vpa.lowercase() !in seenValues) {
-                seenValues.add(vpa.lowercase())
+            val upi = upiMatcher.group().trim().lowercase()
+            if (upi !in seenValues) {
+                seenValues.add(upi)
                 results.add(
                     RecognizedEntity(
                         id = UUID.randomUUID().toString(),
-                        rawText = vpa,
-                        formattedValue = vpa,
+                        rawText = upi,
+                        formattedValue = upi,
                         type = EntityType.UPI_ID,
-                        primaryActionLabel = "Pay via UPI (GPay/PhonePe)",
-                        secondaryActionLabel = "Copy VPA",
-                        boundingBox = NormalizedRect(0.1f, 0.25f, 0.9f, 0.32f)
+                        primaryActionLabel = "Pay via UPI",
+                        secondaryActionLabel = "Copy UPI ID",
+                        boundingBox = NormalizedRect(0.1f, 0.2f, 0.9f, 0.28f)
                     )
                 )
             }
         }
 
-        // 2. IFSC Bank Codes
+        // 2. Bank IFSC
         val ifscMatcher = IFSC_PATTERN.matcher(rawScreenText)
         while (ifscMatcher.find()) {
             val ifsc = ifscMatcher.group().trim().uppercase()
@@ -80,8 +236,8 @@ object EntityRecognizerEngine {
                         rawText = ifsc,
                         formattedValue = "$ifsc ($bankName)",
                         type = EntityType.IFSC_CODE,
-                        primaryActionLabel = "Verify Bank & Branch",
-                        secondaryActionLabel = "Copy IFSC",
+                        primaryActionLabel = "Copy IFSC & Bank Details",
+                        secondaryActionLabel = "Verify Bank & Branch",
                         boundingBox = NormalizedRect(0.15f, 0.38f, 0.85f, 0.44f)
                     )
                 )
@@ -92,17 +248,17 @@ object EntityRecognizerEngine {
         val phoneMatcher = PHONE_PATTERN.matcher(rawScreenText)
         while (phoneMatcher.find()) {
             val phone = phoneMatcher.group().trim().replace(" ", "").replace("-", "")
-            val cleanPhone = if (!phone.startsWith("+91")) "+91 $phone" else phone
-            if (phone !in seenValues) {
-                seenValues.add(phone)
+            val cleanPhone = if (!phone.startsWith("+91")) "+91$phone" else phone
+            if (cleanPhone !in seenValues) {
+                seenValues.add(cleanPhone)
                 results.add(
                     RecognizedEntity(
                         id = UUID.randomUUID().toString(),
                         rawText = phoneMatcher.group().trim(),
                         formattedValue = cleanPhone,
                         type = EntityType.PHONE_NUMBER,
-                        primaryActionLabel = "Call Number",
-                        secondaryActionLabel = "WhatsApp / SMS",
+                        primaryActionLabel = "Call / WhatsApp",
+                        secondaryActionLabel = "Copy Number",
                         boundingBox = NormalizedRect(0.12f, 0.50f, 0.88f, 0.56f)
                     )
                 )
@@ -113,16 +269,15 @@ object EntityRecognizerEngine {
         val urlMatcher = URL_PATTERN.matcher(rawScreenText)
         while (urlMatcher.find()) {
             val url = urlMatcher.group().trim()
-            val fullUrl = if (!url.startsWith("http://") && !url.startsWith("https://")) "https://$url" else url
-            if (fullUrl.lowercase() !in seenValues) {
-                seenValues.add(fullUrl.lowercase())
+            if (url.lowercase() !in seenValues) {
+                seenValues.add(url.lowercase())
                 results.add(
                     RecognizedEntity(
                         id = UUID.randomUUID().toString(),
                         rawText = url,
                         formattedValue = url,
                         type = EntityType.URL_LINK,
-                        primaryActionLabel = "Open Link in Browser",
+                        primaryActionLabel = "Open Link",
                         secondaryActionLabel = "Copy Link",
                         boundingBox = NormalizedRect(0.08f, 0.62f, 0.92f, 0.68f)
                     )
@@ -209,20 +364,12 @@ object EntityRecognizerEngine {
             }
             EntityType.PHONE_NUMBER -> {
                 if (isSecondaryAction) {
-                    // Open WhatsApp chat or SMS
-                    val cleanNum = entity.rawText.replace(" ", "").replace("+", "").replace("-", "")
-                    val uri = Uri.parse("https://api.whatsapp.com/send?phone=$cleanNum")
-                    val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    try {
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        copyToClipboard(context, "Phone", entity.rawText)
-                    }
+                    copyToClipboard(context, "Phone", entity.rawText)
                 } else {
-                    // Dial phone
-                    val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${entity.rawText}")).apply {
+                    // Call / WhatsApp
+                    val cleanNum = entity.rawText.replace(" ", "").replace("+", "").replace("-", "")
+                    val uri = Uri.parse("https://wa.me/91${cleanNum.removePrefix("91")}")
+                    val intent = Intent(Intent.ACTION_VIEW, uri).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     try {
@@ -236,16 +383,7 @@ object EntityRecognizerEngine {
                 if (isSecondaryAction) {
                     copyToClipboard(context, "IFSC Code", entity.rawText)
                 } else {
-                    // Search IFSC details online
-                    val uri = Uri.parse("https://www.google.com/search?q=IFSC+code+${entity.rawText}")
-                    val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    try {
-                        context.startActivity(intent)
-                    } catch (e: Exception) {
-                        copyToClipboard(context, "IFSC", entity.rawText)
-                    }
+                    copyToClipboard(context, "IFSC & Bank Details", entity.rawText)
                 }
             }
             EntityType.URL_LINK -> {

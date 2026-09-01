@@ -1,10 +1,10 @@
 package com.example.praxim.model
 
 import androidx.compose.ui.graphics.Color
-import com.example.ui.theme.AlertAmber
-import com.example.ui.theme.ElectricBlue
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonGreen
+import com.example.praxim.ui.theme.AlertAmber
+import com.example.praxim.ui.theme.ElectricBlue
+import com.example.praxim.ui.theme.NeonCyan
+import com.example.praxim.ui.theme.NeonGreen
 
 enum class EntityType(val displayName: String, val chipColor: Color) {
     UPI_ID("UPI Payment", NeonGreen),

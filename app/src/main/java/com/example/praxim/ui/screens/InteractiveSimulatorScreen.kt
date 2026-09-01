@@ -62,14 +62,14 @@ import com.example.praxim.ui.hud.ExpandedActionHudView
 import com.example.praxim.ui.hud.HudDisplayMode
 import com.example.praxim.ui.hud.HudSettings
 import com.example.praxim.ui.hud.ProcessingShimmerView
-import com.example.ui.theme.AmoledBlack
-import com.example.ui.theme.DarkObsidian
-import com.example.ui.theme.GlassBorder
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonGreen
-import com.example.ui.theme.SurfaceDark
-import com.example.ui.theme.TextPrimaryDark
-import com.example.ui.theme.TextSecondaryDark
+import com.example.praxim.ui.theme.AmoledBlack
+import com.example.praxim.ui.theme.DarkObsidian
+import com.example.praxim.ui.theme.GlassBorder
+import com.example.praxim.ui.theme.NeonCyan
+import com.example.praxim.ui.theme.NeonGreen
+import com.example.praxim.ui.theme.SurfaceDark
+import com.example.praxim.ui.theme.TextPrimaryDark
+import com.example.praxim.ui.theme.TextSecondaryDark
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
