@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.Toast
 import com.example.praxim.model.EntityType
@@ -14,6 +13,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.nio.ByteBuffer
 import java.util.UUID
 import java.util.regex.Pattern
 import kotlin.coroutines.resume
@@ -47,10 +47,16 @@ object EntityRecognizerEngine {
 
     private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
 
-    suspend fun processFrame(bitmap: Bitmap): List<RecognizedEntity> = suspendCancellableCoroutine { continuation ->
-        val image = InputImage.fromBitmap(bitmap, 0)
-        val imageWidth = bitmap.width.toFloat()
-        val imageHeight = bitmap.height.toFloat()
+    suspend fun processFrame(buffer: ByteBuffer, width: Int, height: Int): List<RecognizedEntity> = suspendCancellableCoroutine { continuation ->
+        val image = InputImage.fromByteBuffer(
+            buffer,
+            width,
+            height,
+            0,
+            InputImage.IMAGE_FORMAT_NV21
+        )
+        val imageWidth = width.toFloat()
+        val imageHeight = height.toFloat()
 
         recognizer.process(image)
             .addOnSuccessListener { visionText ->

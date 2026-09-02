@@ -10,9 +10,15 @@ import android.media.Image
 import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.os.Build
+import android.os.Handler
+import android.os.HandlerThread
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import android.view.WindowMetrics
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.nio.ByteBuffer
 
 class ScreenCaptureManager(
     private val context: Context,
@@ -24,10 +30,33 @@ class ScreenCaptureManager(
     private var screenHeight = 0
     private var screenDensity = 0
 
+    private var nv21Buffer: ByteBuffer? = null
+    private var handlerThread: HandlerThread? = null
+    private var handler: Handler? = null
+
+    private var onFrameCallback: ((ByteBuffer, Int, Int, Long) -> Unit)? = null
+    private var onErrorCallback: ((Throwable) -> Unit)? = null
+
+    private var isCapturing = false
+    private val captureScope = CoroutineScope(Dispatchers.Default)
+
     init {
         setupDisplayMetrics()
+        setupBuffers()
+        setupHandlerThread()
         setupImageReader()
         setupVirtualDisplay()
+    }
+
+    private fun setupBuffers() {
+        // NV21 requires width * height * 1.5 bytes
+        val bufferSize = screenWidth * screenHeight * 3 / 2
+        nv21Buffer = ByteBuffer.allocateDirect(bufferSize)
+    }
+
+    private fun setupHandlerThread() {
+        handlerThread = HandlerThread("ImageReaderThread").apply { start() }
+        handler = Handler(handlerThread!!.looper)
     }
 
     private fun setupDisplayMetrics() {
@@ -55,7 +84,74 @@ class ScreenCaptureManager(
             screenHeight,
             PixelFormat.RGBA_8888,
             2
-        )
+        ).apply {
+            setOnImageAvailableListener({ reader ->
+                val image: Image? = reader.acquireLatestImage()
+                if (image == null) return@setOnImageAvailableListener
+
+                if (!isCapturing) {
+                    image.close()
+                    return@setOnImageAvailableListener
+                }
+
+                // We only want a single frame per capture request
+                isCapturing = false
+                val captureTimestamp = System.currentTimeMillis()
+
+                captureScope.launch {
+                    try {
+                        val planes = image.planes
+                        val buffer = planes[0].buffer
+                        val pixelStride = planes[0].pixelStride
+                        val rowStride = planes[0].rowStride
+
+                        val targetBuffer = nv21Buffer ?: return@launch
+                        targetBuffer.rewind()
+
+                        // Extract luminance (Y) from RGBA to NV21 format directly without intermediate arrays/bitmaps
+                        // NV21 layout:
+                        // Y (Luminance) block first: size = width * height
+                        // VU (Chroma) block next: size = width * height / 2
+                        // For OCR, grayscale (Y) is sufficient. ML Kit ignores VU if Y is valid or might need valid VU for some processing depending on strictness.
+                        // We will set UV to 128 (neutral chroma).
+
+                        for (y in 0 until screenHeight) {
+                            var bufferPos = y * rowStride
+                            var targetPos = y * screenWidth
+
+                            for (x in 0 until screenWidth) {
+                                // RGBA_8888 layout: R, G, B, A
+                                val r = buffer.get(bufferPos).toInt() and 0xFF
+                                val g = buffer.get(bufferPos + 1).toInt() and 0xFF
+                                val b = buffer.get(bufferPos + 2).toInt() and 0xFF
+
+                                // Standard RGB to Grayscale (Luminance) conversion
+                                val yVal = ((66 * r + 129 * g + 25 * b + 128) shr 8) + 16
+                                targetBuffer.put(targetPos, yVal.toByte())
+
+                                bufferPos += pixelStride
+                                targetPos++
+                            }
+                        }
+
+                        // Fill UV with neutral values (128)
+                        val ySize = screenWidth * screenHeight
+                        val uvSize = ySize / 2
+                        for (i in 0 until uvSize) {
+                            targetBuffer.put(ySize + i, 128.toByte())
+                        }
+
+                        targetBuffer.rewind()
+                        onFrameCallback?.invoke(targetBuffer, screenWidth, screenHeight, captureTimestamp)
+
+                    } catch (e: Exception) {
+                        onErrorCallback?.invoke(e)
+                    } finally {
+                        image.close()
+                    }
+                }
+            }, handler)
+        }
     }
 
     private fun setupVirtualDisplay() {
@@ -71,46 +167,29 @@ class ScreenCaptureManager(
         )
     }
 
-    fun captureSingleFrame(onBitmapReady: (Bitmap) -> Unit, onError: (Throwable) -> Unit) {
-        val image: Image? = imageReader?.acquireLatestImage()
-        if (image == null) {
-            onError(Exception("Failed to acquire image"))
-            return
-        }
-
-        try {
-            val planes = image.planes
-            val buffer = planes[0].buffer
-            val pixelStride = planes[0].pixelStride
-            val rowStride = planes[0].rowStride
-            val rowPadding = rowStride - pixelStride * screenWidth
-
-            // Create bitmap including row padding
-            val bitmap = Bitmap.createBitmap(
-                screenWidth + rowPadding / pixelStride,
-                screenHeight,
-                Bitmap.Config.ARGB_8888
-            )
-            bitmap.copyPixelsFromBuffer(buffer)
-
-            // Crop out padding to preserve original dimensions
-            val croppedBitmap = Bitmap.createBitmap(bitmap, 0, 0, screenWidth, screenHeight)
-
-            onBitmapReady(croppedBitmap)
-
-        } catch (e: Exception) {
-            onError(e)
-        } finally {
-            image.close()
-        }
+    fun captureSingleFrame(onFrameReady: (ByteBuffer, Int, Int, Long) -> Unit, onError: (Throwable) -> Unit) {
+        this.onFrameCallback = onFrameReady
+        this.onErrorCallback = onError
+        this.isCapturing = true
     }
 
     fun destroy() {
         virtualDisplay?.release()
         virtualDisplay = null
 
+        imageReader?.setOnImageAvailableListener(null, null)
         imageReader?.close()
         imageReader = null
+
+        handlerThread?.quitSafely()
+        try {
+            handlerThread?.join()
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
+        }
+        handlerThread = null
+        handler = null
+        nv21Buffer = null
 
         mediaProjection.stop()
     }

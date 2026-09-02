@@ -39,9 +39,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModelStoreOwner {
 
@@ -133,41 +135,55 @@ class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModel
             windowManager?.updateLayout(expanded = true)
 
             screenCaptureManager?.captureSingleFrame(
-                onBitmapReady = { bitmap ->
-                    serviceScope.launch {
+                onFrameReady = { buffer, width, height, captureTimestamp ->
+                    serviceScope.launch(Dispatchers.Default) {
                         try {
-                            val parsed = EntityRecognizerEngine.processFrame(bitmap)
-                            if (parsed.isNotEmpty()) {
-                                _displayMode.value = HudDisplayMode.Expanded(parsed)
+                            val parsed = EntityRecognizerEngine.processFrame(buffer, width, height)
 
-                                parsed.forEach { entity ->
-                                    repository.insert(
-                                        ScanHistoryEntity(
-                                            rawText = entity.rawText,
-                                            formattedValue = entity.formattedValue,
-                                            entityType = entity.type.name,
-                                            primaryActionLabel = entity.primaryActionLabel,
-                                            timestamp = entity.timestamp
+                            val endTimestamp = System.currentTimeMillis()
+                            val latency = endTimestamp - captureTimestamp
+                            Log.i("PraximPerformance", "End-to-End Trigger-to-Render Latency: ${latency}ms")
+
+                            withContext(Dispatchers.Main) {
+                                if (parsed.isNotEmpty()) {
+                                    _displayMode.value = HudDisplayMode.Expanded(parsed)
+
+                                    // Update layout must be on main thread
+                                    windowManager?.updateLayout(expanded = true)
+
+                                    parsed.forEach { entity ->
+                                        repository.insert(
+                                            ScanHistoryEntity(
+                                                rawText = entity.rawText,
+                                                formattedValue = entity.formattedValue,
+                                                entityType = entity.type.name,
+                                                primaryActionLabel = entity.primaryActionLabel,
+                                                timestamp = entity.timestamp
+                                            )
                                         )
-                                    )
+                                    }
+                                } else {
+                                    // Briefly show processing then collapse if nothing found
+                                    delay(300)
+                                    _displayMode.value = HudDisplayMode.Collapsed
+                                    windowManager?.updateLayout(expanded = false)
                                 }
-                            } else {
-                                // Briefly show processing then collapse if nothing found
-                                delay(300)
-                                _displayMode.value = HudDisplayMode.Collapsed
-                                windowManager?.updateLayout(expanded = false)
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()
-                            _displayMode.value = HudDisplayMode.Collapsed
-                            windowManager?.updateLayout(expanded = false)
+                            withContext(Dispatchers.Main) {
+                                _displayMode.value = HudDisplayMode.Collapsed
+                                windowManager?.updateLayout(expanded = false)
+                            }
                         }
                     }
                 },
                 onError = {
                     it.printStackTrace()
-                    _displayMode.value = HudDisplayMode.Collapsed
-                    windowManager?.updateLayout(expanded = false)
+                    serviceScope.launch(Dispatchers.Main) {
+                        _displayMode.value = HudDisplayMode.Collapsed
+                        windowManager?.updateLayout(expanded = false)
+                    }
                 }
             ) ?: run {
                 // Fallback if ScreenCaptureManager is not initialized
