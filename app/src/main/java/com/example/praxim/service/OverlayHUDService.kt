@@ -44,14 +44,23 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 
-class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModelStoreOwner {
+class OverlayHUDService : LifecycleService() {
 
-    private val savedStateRegistryController = SavedStateRegistryController.create(this)
-    private val store = ViewModelStore()
+    private val lifecycleHost = PraximLifecycleHost()
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
-    private var windowManager: OverlayWindowManager? = null
+    private var windowManager: PraximWindowManager? = null
     private var screenCaptureManager: ScreenCaptureManager? = null
 
     private val _displayMode = MutableStateFlow<HudDisplayMode>(HudDisplayMode.Collapsed)
@@ -62,48 +71,64 @@ class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModel
 
     private lateinit var repository: ScanHistoryRepository
 
-    override val savedStateRegistry: SavedStateRegistry
-        get() = savedStateRegistryController.savedStateRegistry
-
-    override val viewModelStore: ViewModelStore
-        get() = store
-
     override fun onCreate() {
         super.onCreate()
-        savedStateRegistryController.performRestore(null)
+        lifecycleHost.onAttach()
 
         val database = PraximDatabase.getDatabase(this)
         repository = ScanHistoryRepository(database.scanHistoryDao())
 
         startForegroundServiceNotification()
 
-        windowManager = OverlayWindowManager(this, this, this, this)
+        windowManager = PraximWindowManager(this, lifecycleHost)
         windowManager?.mount {
             val mode by displayMode.collectAsState()
             val settings by hudSettings.collectAsState()
 
+            val windowState by windowManager!!.windowState.collectAsState()
+            val insetsData by windowManager!!.insets.collectAsState()
+
             PraximTheme {
-                when (val currentMode = mode) {
-                    is HudDisplayMode.Collapsed -> {
-                        EdgePillView(
-                            settings = settings,
-                            onTriggerScan = { triggerOnDeviceScan() }
-                        )
-                    }
-                    is HudDisplayMode.Processing -> {
-                        ProcessingShimmerView()
-                    }
-                    is HudDisplayMode.Expanded -> {
-                        ExpandedActionHudView(
-                            entities = currentMode.entities,
-                            onDismiss = {
-                                _displayMode.value = HudDisplayMode.Collapsed
-                                windowManager?.updateLayout(expanded = false)
-                            },
-                            onEntityActionExecuted = { entity, action ->
-                                recordEntityActionInHistory(entity, action)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = with(LocalDensity.current) { insetsData.bottom.toDp() })
+                ) {
+                    AnimatedContent(
+                        targetState = windowState,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                        }, label = "window_state_animation"
+                    ) { state ->
+                        when (state) {
+                            WindowState.RESTING -> {
+                                EdgePillView(
+                                    settings = settings,
+                                    onTriggerScan = { triggerOnDeviceScan() }
+                                )
                             }
-                        )
+                            WindowState.ANIMATING -> {
+                                if (mode is HudDisplayMode.Processing) {
+                                    ProcessingShimmerView()
+                                }
+                            }
+                            WindowState.ACTIVE -> {
+                                if (mode is HudDisplayMode.Expanded) {
+                                    ExpandedActionHudView(
+                                        entities = (mode as HudDisplayMode.Expanded).entities,
+                                        onDismiss = {
+                                            _displayMode.value = HudDisplayMode.Collapsed
+                                            serviceScope.launch { windowManager?.collapse() }
+                                        },
+                                        onEntityActionExecuted = { entity, action ->
+                                            recordEntityActionInHistory(entity, action)
+                                        }
+                                    )
+                                } else if (mode is HudDisplayMode.Processing) {
+                                     ProcessingShimmerView()
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -132,7 +157,7 @@ class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModel
     private fun triggerOnDeviceScan() {
         serviceScope.launch {
             _displayMode.value = HudDisplayMode.Processing
-            windowManager?.updateLayout(expanded = true)
+            windowManager?.expand()
 
             screenCaptureManager?.captureSingleFrame(
                 onFrameReady = { buffer, width, height, captureTimestamp ->
@@ -147,9 +172,6 @@ class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModel
                             withContext(Dispatchers.Main) {
                                 if (parsed.isNotEmpty()) {
                                     _displayMode.value = HudDisplayMode.Expanded(parsed)
-
-                                    // Update layout must be on main thread
-                                    windowManager?.updateLayout(expanded = true)
 
                                     parsed.forEach { entity ->
                                         repository.insert(
@@ -166,14 +188,14 @@ class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModel
                                     // Briefly show processing then collapse if nothing found
                                     delay(300)
                                     _displayMode.value = HudDisplayMode.Collapsed
-                                    windowManager?.updateLayout(expanded = false)
+                                    windowManager?.collapse()
                                 }
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()
                             withContext(Dispatchers.Main) {
                                 _displayMode.value = HudDisplayMode.Collapsed
-                                windowManager?.updateLayout(expanded = false)
+                                windowManager?.collapse()
                             }
                         }
                     }
@@ -182,13 +204,13 @@ class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModel
                     it.printStackTrace()
                     serviceScope.launch(Dispatchers.Main) {
                         _displayMode.value = HudDisplayMode.Collapsed
-                        windowManager?.updateLayout(expanded = false)
+                        windowManager?.collapse()
                     }
                 }
             ) ?: run {
                 // Fallback if ScreenCaptureManager is not initialized
                 _displayMode.value = HudDisplayMode.Collapsed
-                windowManager?.updateLayout(expanded = false)
+                windowManager?.collapse()
             }
         }
     }
@@ -249,8 +271,8 @@ class OverlayHUDService : LifecycleService(), SavedStateRegistryOwner, ViewModel
         screenCaptureManager?.destroy()
         screenCaptureManager = null
         windowManager?.destroy()
-        store.clear()
         windowManager = null
+        lifecycleHost.onDetach()
     }
 
     companion object {
