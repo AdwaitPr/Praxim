@@ -76,6 +76,13 @@ googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.W
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
+  androidTestImplementation(libs.androidx.room.testing)
+  implementation(libs.androidx.paging.runtime)
+  implementation(libs.androidx.paging.compose)
+  implementation(libs.androidx.room.paging)
+  implementation(libs.sqlcipher)
+  implementation(libs.androidx.sqlite.ktx)
+  implementation(libs.androidx.work.runtime.ktx)
   implementation(platform(libs.androidx.compose.bom))
   implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)

@@ -1,0 +1,3 @@
+sed -i 's/specBuilder.setIsStrongBoxBacked(true).build()/if (android.os.Build.VERSION.SDK_INT >= 28) { specBuilder.setIsStrongBoxBacked(true).build() } else { specBuilder.build() }/' app/src/main/java/com/praxim/core/security/SecurityKeyManager.kt
+sed -i 's/catch (e: StrongBoxUnavailableException)/catch (e: Exception)/' app/src/main/java/com/praxim/core/security/SecurityKeyManager.kt
+sed -i 's/specBuilder.setIsStrongBoxBacked(false).build()/if (android.os.Build.VERSION.SDK_INT >= 28) { specBuilder.setIsStrongBoxBacked(false).build() } else { specBuilder.build() }/' app/src/main/java/com/praxim/core/security/SecurityKeyManager.kt
