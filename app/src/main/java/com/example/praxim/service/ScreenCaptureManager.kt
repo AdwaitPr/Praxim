@@ -155,6 +155,12 @@ class ScreenCaptureManager(
     }
 
     private fun setupVirtualDisplay() {
+        mediaProjection.registerCallback(object : MediaProjection.Callback() {
+            override fun onStop() {
+                super.onStop()
+            }
+        }, handler)
+
         virtualDisplay = mediaProjection.createVirtualDisplay(
             "ScreenCapture",
             screenWidth,

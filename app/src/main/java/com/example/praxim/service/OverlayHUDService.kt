@@ -146,9 +146,15 @@ class OverlayHUDService : LifecycleService() {
             }
 
             if (resultCode != 0 && resultData != null) {
-                val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-                val mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
-                mediaProjection?.let { screenCaptureManager = ScreenCaptureManager(this, it) }
+                try {
+                    val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                    val mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
+                    mediaProjection?.let { screenCaptureManager = ScreenCaptureManager(this, it) }
+                } catch (e: SecurityException) {
+                    Log.e("OverlayHUDService", "SecurityException creating MediaProjection", e)
+                } catch (e: Exception) {
+                    Log.e("OverlayHUDService", "Error creating MediaProjection", e)
+                }
             }
         }
         return super.onStartCommand(intent, flags, startId)
@@ -260,7 +266,17 @@ class OverlayHUDService : LifecycleService() {
             .build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(1001, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            startForeground(
+                1001,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                1001,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            )
         } else {
             startForeground(1001, notification)
         }
