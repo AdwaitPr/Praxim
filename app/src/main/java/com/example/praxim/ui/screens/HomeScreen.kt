@@ -82,6 +82,7 @@ fun HomeScreen(
     repository: ScanHistoryRepository,
     onNavigateSimulator: () -> Unit,
     onNavigateHistory: () -> Unit,
+    onStartOverlayService: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -265,7 +266,11 @@ fun HomeScreen(
                                         )
                                         context.startActivity(intent)
                                     } else {
-                                        OverlayHUDService.start(context)
+                                        if (onStartOverlayService != null) {
+                                            onStartOverlayService()
+                                        } else {
+                                            OverlayHUDService.start(context)
+                                        }
                                         isServiceRunning = true
                                     }
                                 } else {

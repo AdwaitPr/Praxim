@@ -23,7 +23,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
-import com.example.praxim.MainActivity
+import com.example.MainActivity
 import com.example.praxim.data.PraximDatabase
 import com.example.praxim.data.ScanHistoryEntity
 import com.example.praxim.data.ScanHistoryRepository
