@@ -1,18 +1,15 @@
 package com.example.praxim.ui.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 
+/**
+ * Precision Instrument Pure Dark Theme Scheme
+ */
 private val DarkColorScheme = darkColorScheme(
-    primary = HyperLime,
-    secondary = CyberCyan,
+    primary = CyberCyan,
+    secondary = HyperLime,
     tertiary = ShieldEmerald,
     background = VoidBase,
     surface = SurfaceTier1,
@@ -22,44 +19,19 @@ private val DarkColorScheme = darkColorScheme(
     onTertiary = VoidBase,
     onBackground = TextPrimaryDark,
     onSurface = TextPrimaryDark,
-    onSurfaceVariant = TextSecondaryDark
-)
-
-private val LightColorScheme = darkColorScheme(
-    primary = HyperLime,
-    secondary = CyberCyan,
-    tertiary = ShieldEmerald,
-    background = VoidBase,
-    surface = SurfaceTier1,
-    surfaceVariant = SurfaceTier2,
-    onPrimary = VoidBase,
-    onSecondary = VoidBase,
-    onTertiary = VoidBase,
-    onBackground = TextPrimaryDark,
-    onSurface = TextPrimaryDark,
-    onSurfaceVariant = TextSecondaryDark
+    onSurfaceVariant = TextSecondaryDark,
+    outline = GlassBorder,
+    error = AlertAmber
 )
 
 @Composable
 fun PraximTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Keep false by default so custom obsidian void palette applies consistently
-    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = DarkColorScheme,
         typography = Typography,
+        shapes = InstrumentShapes,
         content = content
     )
 }

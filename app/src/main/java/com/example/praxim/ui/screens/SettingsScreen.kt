@@ -1,8 +1,8 @@
 package com.example.praxim.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,15 +15,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -34,16 +29,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.praxim.ui.hud.HudSettings
-import com.example.praxim.ui.theme.AmoledBlack
-import com.example.praxim.ui.theme.DarkObsidian
-import com.example.praxim.ui.theme.GlassBorder
-import com.example.praxim.ui.theme.NeonGreen
-import com.example.praxim.ui.theme.SurfaceDark
+import com.example.praxim.ui.theme.CyberCyan
+import com.example.praxim.ui.theme.HyperLime
+import com.example.praxim.ui.theme.SurfaceTier1
+import com.example.praxim.ui.theme.SurfaceTier2
 import com.example.praxim.ui.theme.TextPrimaryDark
 import com.example.praxim.ui.theme.TextSecondaryDark
+import com.example.praxim.ui.theme.VoidBase
+import com.example.praxim.ui.theme.specularGlassCard
 
 @Composable
 fun SettingsScreen(
@@ -55,7 +52,7 @@ fun SettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(AmoledBlack)
+            .background(VoidBase)
             .padding(18.dp)
     ) {
         // Header
@@ -68,13 +65,13 @@ fun SettingsScreen(
                 Text(
                     text = "HUD PREFERENCES",
                     fontSize = 16.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    fontWeight = FontWeight.Bold,
                     color = TextPrimaryDark
                 )
                 Text(
                     text = "Configure edge handle & gesture sensitivity",
                     fontSize = 11.sp,
-                    color = NeonGreen
+                    color = CyberCyan
                 )
             }
         }
@@ -82,18 +79,22 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(18.dp))
 
         // Anchor Side Card
-        Card(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp)),
-            colors = CardDefaults.cardColors(containerColor = DarkObsidian),
-            shape = RoundedCornerShape(20.dp)
+                .specularGlassCard(
+                    shape = RoundedCornerShape(20.dp),
+                    backgroundColor = SurfaceTier1.copy(alpha = 0.9f),
+                    ambientGlow = CyberCyan.copy(alpha = 0.08f),
+                    elevation = 12.dp
+                )
+                .padding(16.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column {
                 Text(
                     text = "Edge Handle Screen Anchor",
                     fontSize = 14.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    fontWeight = FontWeight.Bold,
                     color = TextPrimaryDark
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -107,7 +108,7 @@ fun SettingsScreen(
                     RadioButton(
                         selected = settings.anchorRight,
                         onClick = { settings = settings.copy(anchorRight = true) },
-                        colors = RadioButtonDefaults.colors(selectedColor = NeonGreen)
+                        colors = RadioButtonDefaults.colors(selectedColor = CyberCyan)
                     )
                 }
 
@@ -120,7 +121,7 @@ fun SettingsScreen(
                     RadioButton(
                         selected = !settings.anchorRight,
                         onClick = { settings = settings.copy(anchorRight = false) },
-                        colors = RadioButtonDefaults.colors(selectedColor = NeonGreen)
+                        colors = RadioButtonDefaults.colors(selectedColor = CyberCyan)
                     )
                 }
             }
@@ -129,14 +130,18 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(14.dp))
 
         // Haptic Feedback & Gesture Sensitivity
-        Card(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp)),
-            colors = CardDefaults.cardColors(containerColor = DarkObsidian),
-            shape = RoundedCornerShape(20.dp)
+                .specularGlassCard(
+                    shape = RoundedCornerShape(20.dp),
+                    backgroundColor = SurfaceTier1.copy(alpha = 0.9f),
+                    ambientGlow = CyberCyan.copy(alpha = 0.08f),
+                    elevation = 12.dp
+                )
+                .padding(16.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -146,7 +151,7 @@ fun SettingsScreen(
                         Text(
                             text = "Tactile Haptic Vibration",
                             fontSize = 14.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            fontWeight = FontWeight.Bold,
                             color = TextPrimaryDark
                         )
                         Text(
@@ -159,7 +164,7 @@ fun SettingsScreen(
                     Switch(
                         checked = settings.hapticEnabled,
                         onCheckedChange = { settings = settings.copy(hapticEnabled = it) },
-                        colors = SwitchDefaults.colors(checkedThumbColor = AmoledBlack, checkedTrackColor = NeonGreen)
+                        colors = SwitchDefaults.colors(checkedThumbColor = VoidBase, checkedTrackColor = CyberCyan)
                     )
                 }
 
@@ -174,7 +179,7 @@ fun SettingsScreen(
                         Text(
                             text = "Auto-Copy Single Match",
                             fontSize = 14.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            fontWeight = FontWeight.Bold,
                             color = TextPrimaryDark
                         )
                         Text(
@@ -187,7 +192,7 @@ fun SettingsScreen(
                     Switch(
                         checked = settings.autoCopyOnSingleMatch,
                         onCheckedChange = { settings = settings.copy(autoCopyOnSingleMatch = it) },
-                        colors = SwitchDefaults.colors(checkedThumbColor = AmoledBlack, checkedTrackColor = NeonGreen)
+                        colors = SwitchDefaults.colors(checkedThumbColor = VoidBase, checkedTrackColor = CyberCyan)
                     )
                 }
             }
@@ -196,21 +201,25 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(14.dp))
 
         // Core Philosophy & Privacy Info Card
-        Card(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp)),
-            colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-            shape = RoundedCornerShape(20.dp)
+                .specularGlassCard(
+                    shape = RoundedCornerShape(20.dp),
+                    backgroundColor = SurfaceTier2.copy(alpha = 0.85f),
+                    ambientGlow = HyperLime.copy(alpha = 0.05f),
+                    elevation = 8.dp
+                )
+                .padding(16.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = NeonGreen)
+                    Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = CyberCyan)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Intent-First Screen Intelligence",
                         fontSize = 13.sp,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        fontWeight = FontWeight.Bold,
                         color = TextPrimaryDark
                     )
                 }

@@ -44,12 +44,13 @@ import com.example.praxim.ui.screens.HistoryAuditScreen
 import com.example.praxim.ui.screens.HomeScreen
 import com.example.praxim.ui.screens.InteractiveSimulatorScreen
 import com.example.praxim.ui.screens.SettingsScreen
-import com.example.praxim.ui.theme.AmoledBlack
-import com.example.praxim.ui.theme.DarkObsidian
-import com.example.praxim.ui.theme.NeonGreen
+import com.example.praxim.ui.theme.CyberCyan
+import com.example.praxim.ui.theme.HyperLime
 import com.example.praxim.ui.theme.PraximTheme
+import com.example.praxim.ui.theme.SurfaceTier1
 import com.example.praxim.ui.theme.TextPrimaryDark
 import com.example.praxim.ui.theme.TextSecondaryDark
+import com.example.praxim.ui.theme.VoidBase
 
 class MainActivity : ComponentActivity() {
 
@@ -84,10 +85,10 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    containerColor = AmoledBlack,
+                    containerColor = VoidBase,
                     bottomBar = {
                         NavigationBar(
-                            containerColor = DarkObsidian,
+                            containerColor = SurfaceTier1,
                             contentColor = TextPrimaryDark,
                             modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
                         ) {
@@ -97,9 +98,9 @@ class MainActivity : ComponentActivity() {
                                 icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
                                 label = { Text("Home") },
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = AmoledBlack,
-                                    selectedTextColor = NeonGreen,
-                                    indicatorColor = NeonGreen,
+                                    selectedIconColor = VoidBase,
+                                    selectedTextColor = CyberCyan,
+                                    indicatorColor = CyberCyan,
                                     unselectedIconColor = TextSecondaryDark,
                                     unselectedTextColor = TextSecondaryDark
                                 )
@@ -111,9 +112,9 @@ class MainActivity : ComponentActivity() {
                                 icon = { Icon(Icons.Default.PlayCircle, contentDescription = "Simulator") },
                                 label = { Text("Simulator") },
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = AmoledBlack,
-                                    selectedTextColor = NeonGreen,
-                                    indicatorColor = NeonGreen,
+                                    selectedIconColor = VoidBase,
+                                    selectedTextColor = CyberCyan,
+                                    indicatorColor = CyberCyan,
                                     unselectedIconColor = TextSecondaryDark,
                                     unselectedTextColor = TextSecondaryDark
                                 )
@@ -125,9 +126,9 @@ class MainActivity : ComponentActivity() {
                                 icon = { Icon(Icons.Default.Security, contentDescription = "Audit Log") },
                                 label = { Text("Audit Log") },
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = AmoledBlack,
-                                    selectedTextColor = NeonGreen,
-                                    indicatorColor = NeonGreen,
+                                    selectedIconColor = VoidBase,
+                                    selectedTextColor = CyberCyan,
+                                    indicatorColor = CyberCyan,
                                     unselectedIconColor = TextSecondaryDark,
                                     unselectedTextColor = TextSecondaryDark
                                 )
@@ -139,9 +140,9 @@ class MainActivity : ComponentActivity() {
                                 icon = { Icon(Icons.Default.SettingsIcon, contentDescription = "Settings") },
                                 label = { Text("Settings") },
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = AmoledBlack,
-                                    selectedTextColor = NeonGreen,
-                                    indicatorColor = NeonGreen,
+                                    selectedIconColor = VoidBase,
+                                    selectedTextColor = CyberCyan,
+                                    indicatorColor = CyberCyan,
                                     unselectedIconColor = TextSecondaryDark,
                                     unselectedTextColor = TextSecondaryDark
                                 )

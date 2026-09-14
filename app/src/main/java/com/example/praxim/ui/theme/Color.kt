@@ -3,33 +3,26 @@ package com.example.praxim.ui.theme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-// Obsidian Void Hierarchy
-val VoidBase = Color(0xFF07090E)            // Root background
+// Obsidian Void Hierarchy (~90% surface area)
+val VoidBase = Color(0xFF07090E)            // Root canvas background
 val SurfaceTier1 = Color(0xFF0F131C)        // Base card container
-val SurfaceTier2 = Color(0xFF171C28)        // Elevated card & active items
-val SurfaceHighlight = Color(0xFF22293A)    // Interactive / focused pill state
+val SurfaceTier2 = Color(0xFF171C28)        // Elevated card & active item
+val SurfaceHighlight = Color(0xFF22293A)    // Interactive / focused state
 
-// Active Energy Accents
-val HyperLime = Color(0xFFCCFF00)           // Primary action / intelligence core
-val CyberCyan = Color(0xFF00F0FF)           // Diagnostic / secondary telemetry
-val ShieldEmerald = Color(0xFF00E699)       // 100% on-device cryptographic trust
-val AlertAmber = Color(0xFFFF9500)          // Tracking / warning alerts
+// Disciplined Accent Palette (~10% budget)
+val CyberCyan = Color(0xFF00F0FF)           // Primary interactive accent
+val HyperLime = Color(0xFFCCFF00)           // Rare success / confirmation flash
+val ShieldEmerald = Color(0xFF00E699)       // Strictly 100% on-device trust badge
+val AlertAmber = Color(0xFFFF9500)          // Strictly warnings / tracking alerts
+
+// High-Contrast Specular Typography
 val TextPrimaryDark = Color(0xFFF4F6FC)     // Specular white
 val TextSecondaryDark = Color(0xFF8E95A5)   // Slate telemetry gray
-val TextTertiaryDark = Color(0x668E95A5)
+val TextTertiaryDark = Color(0xFFA6ACBD)    // WCAG AA compliant muted gray
 
-// Legacy Compatibility Mappings
-val AmoledBlack = VoidBase
-val DarkObsidian = SurfaceTier1
-val SurfaceDark = SurfaceTier2
+// Glass & Border Overlays
 val GlassBorder = Color(0x33F4F6FC)
-val NeonGreen = HyperLime
-val NeonCyan = CyberCyan
-val ElectricBlue = CyberCyan
-val Purple80 = HyperLime
-val PurpleGrey80 = TextSecondaryDark
-val Pink80 = ShieldEmerald
 
-// Dynamic Gradients
-val CoreEnergyGradient = Brush.linearGradient(listOf(HyperLime, CyberCyan))
-val EdgeHandleGradient = Brush.verticalGradient(listOf(HyperLime, CyberCyan, HyperLime))
+// Dynamic Telemetry Gradients
+val CoreEnergyGradient = Brush.linearGradient(listOf(CyberCyan, ShieldEmerald))
+val EdgeHandleGradient = Brush.verticalGradient(listOf(CyberCyan, ShieldEmerald, CyberCyan))

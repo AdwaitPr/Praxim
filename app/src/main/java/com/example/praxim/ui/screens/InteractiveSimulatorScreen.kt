@@ -1,9 +1,7 @@
 package com.example.praxim.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,17 +20,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -56,20 +48,20 @@ import androidx.compose.ui.unit.sp
 import com.example.praxim.data.ScanHistoryEntity
 import com.example.praxim.data.ScanHistoryRepository
 import com.example.praxim.engine.EntityRecognizerEngine
-import com.example.praxim.model.RecognizedEntity
 import com.example.praxim.ui.hud.EdgePillView
 import com.example.praxim.ui.hud.ExpandedActionHudView
 import com.example.praxim.ui.hud.HudDisplayMode
 import com.example.praxim.ui.hud.HudSettings
 import com.example.praxim.ui.hud.ProcessingShimmerView
-import com.example.praxim.ui.theme.AmoledBlack
-import com.example.praxim.ui.theme.DarkObsidian
+import com.example.praxim.ui.theme.CyberCyan
 import com.example.praxim.ui.theme.GlassBorder
-import com.example.praxim.ui.theme.NeonCyan
-import com.example.praxim.ui.theme.NeonGreen
-import com.example.praxim.ui.theme.SurfaceDark
+import com.example.praxim.ui.theme.HyperLime
+import com.example.praxim.ui.theme.SurfaceTier1
+import com.example.praxim.ui.theme.SurfaceTier2
 import com.example.praxim.ui.theme.TextPrimaryDark
 import com.example.praxim.ui.theme.TextSecondaryDark
+import com.example.praxim.ui.theme.VoidBase
+import com.example.praxim.ui.theme.specularGlassCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -138,7 +130,7 @@ fun InteractiveSimulatorScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(AmoledBlack)
+            .background(VoidBase)
     ) {
         Column(
             modifier = Modifier
@@ -164,7 +156,7 @@ fun InteractiveSimulatorScreen(
                     Text(
                         text = "Test edge handle gesture & instant entity parsing",
                         fontSize = 11.sp,
-                        color = NeonGreen
+                        color = HyperLime
                     )
                 }
             }
@@ -198,11 +190,11 @@ fun InteractiveSimulatorScreen(
                                 text = sample.title,
                                 fontSize = 12.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) AmoledBlack else TextPrimaryDark
+                                color = if (isSelected) VoidBase else TextPrimaryDark
                             )
                         },
                         colors = AssistChipDefaults.assistChipColors(
-                            containerColor = if (isSelected) NeonGreen else SurfaceDark
+                            containerColor = if (isSelected) HyperLime else SurfaceTier2
                         ),
                         border = AssistChipDefaults.assistChipBorder(
                             enabled = !isSelected,
@@ -214,14 +206,17 @@ fun InteractiveSimulatorScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Simulated Mobile Screen Container
-            Card(
+            // Simulated Mobile Screen Container with specular glass effect
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .border(1.dp, GlassBorder, RoundedCornerShape(24.dp)),
-                colors = CardDefaults.cardColors(containerColor = DarkObsidian),
-                shape = RoundedCornerShape(24.dp)
+                    .specularGlassCard(
+                        shape = RoundedCornerShape(24.dp),
+                        backgroundColor = SurfaceTier1.copy(alpha = 0.95f),
+                        ambientGlow = CyberCyan.copy(alpha = 0.08f),
+                        elevation = 16.dp
+                    )
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     Column(
@@ -248,7 +243,7 @@ fun InteractiveSimulatorScreen(
                         // Active Screen Header
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = SurfaceDark
+                            color = SurfaceTier2
                         ) {
                             Row(
                                 modifier = Modifier
@@ -256,13 +251,13 @@ fun InteractiveSimulatorScreen(
                                     .padding(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(NeonCyan))
+                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(CyberCyan))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "Mock App: ${selectedScenario.category}",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = NeonCyan
+                                    color = CyberCyan
                                 )
                             }
                         }
@@ -279,8 +274,8 @@ fun InteractiveSimulatorScreen(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = GlassBorder,
                                 unfocusedBorderColor = Color.Transparent,
-                                focusedContainerColor = SurfaceDark.copy(alpha = 0.5f),
-                                unfocusedContainerColor = SurfaceDark.copy(alpha = 0.5f),
+                                focusedContainerColor = SurfaceTier2.copy(alpha = 0.5f),
+                                unfocusedContainerColor = SurfaceTier2.copy(alpha = 0.5f),
                                 focusedTextColor = TextPrimaryDark,
                                 unfocusedTextColor = TextPrimaryDark
                             ),
@@ -296,16 +291,16 @@ fun InteractiveSimulatorScreen(
 
                         Button(
                             onClick = { triggerSimulatorScan() },
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                            colors = ButtonDefaults.buttonColors(containerColor = HyperLime),
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(imageVector = Icons.Default.Bolt, contentDescription = null, tint = AmoledBlack)
+                            Icon(imageVector = Icons.Default.Bolt, contentDescription = null, tint = VoidBase)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "PULL EDGE HANDLE OR TAP TO OCR SCAN",
                                 fontWeight = FontWeight.ExtraBold,
-                                color = AmoledBlack,
+                                color = VoidBase,
                                 fontSize = 12.sp,
                                 letterSpacing = 0.5.sp
                             )

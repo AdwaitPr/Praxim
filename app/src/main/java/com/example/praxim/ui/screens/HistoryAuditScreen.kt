@@ -2,7 +2,6 @@ package com.example.praxim.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,20 +16,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -47,21 +42,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.praxim.data.ScanHistoryRepository
-import com.example.praxim.ui.theme.AmoledBlack
-import com.example.praxim.ui.theme.DarkObsidian
+import com.example.praxim.ui.theme.CyberCyan
 import com.example.praxim.ui.theme.GlassBorder
-import com.example.praxim.ui.theme.NeonCyan
-import com.example.praxim.ui.theme.NeonGreen
-import com.example.praxim.ui.theme.SurfaceDark
+import com.example.praxim.ui.theme.HyperLime
+import com.example.praxim.ui.theme.ShieldEmerald
+import com.example.praxim.ui.theme.SurfaceTier1
+import com.example.praxim.ui.theme.SurfaceTier2
 import com.example.praxim.ui.theme.TextPrimaryDark
 import com.example.praxim.ui.theme.TextSecondaryDark
+import com.example.praxim.ui.theme.VoidBase
+import com.example.praxim.ui.theme.specularGlassCard
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -104,7 +100,7 @@ fun HistoryAuditScreen(
                         }
                     }
                 ) {
-                    Text(text = "Clear All", color = NeonGreen, fontWeight = FontWeight.Bold)
+                    Text(text = "Clear All", color = CyberCyan, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -112,7 +108,7 @@ fun HistoryAuditScreen(
                     Text(text = "Cancel", color = TextSecondaryDark)
                 }
             },
-            containerColor = DarkObsidian,
+            containerColor = SurfaceTier1,
             titleContentColor = TextPrimaryDark,
             textContentColor = TextSecondaryDark
         )
@@ -121,7 +117,7 @@ fun HistoryAuditScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(AmoledBlack)
+            .background(VoidBase)
             .padding(18.dp)
     ) {
         // Top Header Row
@@ -145,7 +141,7 @@ fun HistoryAuditScreen(
                     Text(
                         text = "100% Stored Locally in App SQLite Database",
                         fontSize = 11.sp,
-                        color = NeonGreen
+                        color = ShieldEmerald
                     )
                 }
             }
@@ -168,9 +164,9 @@ fun HistoryAuditScreen(
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = GlassBorder,
-                unfocusedBorderColor = SurfaceDark,
-                focusedContainerColor = DarkObsidian,
-                unfocusedContainerColor = DarkObsidian,
+                unfocusedBorderColor = SurfaceTier2,
+                focusedContainerColor = SurfaceTier1,
+                unfocusedContainerColor = SurfaceTier1,
                 focusedTextColor = TextPrimaryDark,
                 unfocusedTextColor = TextPrimaryDark
             ),
@@ -192,11 +188,11 @@ fun HistoryAuditScreen(
                             text = cat.replace("_", " "),
                             fontSize = 11.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) AmoledBlack else TextPrimaryDark
+                            color = if (isSelected) VoidBase else TextPrimaryDark
                         )
                     },
                     colors = AssistChipDefaults.assistChipColors(
-                        containerColor = if (isSelected) NeonCyan else SurfaceDark
+                        containerColor = if (isSelected) CyberCyan else SurfaceTier2
                     ),
                     border = AssistChipDefaults.assistChipBorder(enabled = !isSelected, borderColor = GlassBorder)
                 )
@@ -233,14 +229,18 @@ fun HistoryAuditScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 items(filteredList, key = { it.id }) { scan ->
-                    Card(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, GlassBorder, RoundedCornerShape(16.dp)),
-                        colors = CardDefaults.cardColors(containerColor = DarkObsidian),
-                        shape = RoundedCornerShape(16.dp)
+                            .specularGlassCard(
+                                shape = RoundedCornerShape(16.dp),
+                                backgroundColor = SurfaceTier1.copy(alpha = 0.9f),
+                                ambientGlow = CyberCyan.copy(alpha = 0.05f),
+                                elevation = 8.dp
+                            )
+                            .padding(14.dp)
                     ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
+                        Column {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -248,13 +248,13 @@ fun HistoryAuditScreen(
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
-                                    color = NeonGreen.copy(alpha = 0.15f)
+                                    color = CyberCyan.copy(alpha = 0.15f)
                                 ) {
                                     Text(
                                         text = scan.entityType,
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = NeonGreen,
+                                        color = CyberCyan,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                                     )
                                 }
@@ -302,7 +302,7 @@ fun HistoryAuditScreen(
                                 Text(
                                     text = "Executed Action: $action",
                                     fontSize = 11.sp,
-                                    color = NeonCyan,
+                                    color = HyperLime,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
