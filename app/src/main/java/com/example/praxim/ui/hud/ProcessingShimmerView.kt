@@ -1,5 +1,6 @@
 package com.example.praxim.ui.hud
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -7,7 +8,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,37 +26,63 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.praxim.ui.theme.DarkObsidian
-import com.example.praxim.ui.theme.GlassBorder
-import com.example.praxim.ui.theme.NeonGreen
+import com.example.praxim.ui.theme.HyperLime
+import com.example.praxim.ui.theme.SurfaceTier1
 import com.example.praxim.ui.theme.TextSecondaryDark
+import com.example.praxim.ui.theme.specularGlassCard
 
 @Composable
 fun ProcessingShimmerView(
     modifier: Modifier = Modifier
 ) {
-    val transition = rememberInfiniteTransition(label = "shimmer")
-    val alphaAnim by transition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.9f,
+    val transition = rememberInfiniteTransition(label = "sweep_shimmer")
+
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 500, easing = LinearEasing),
+            animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "sweep_translation"
+    )
+
+    val haloScale by transition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "alpha"
+        label = "halo_pulse"
+    )
+
+    val sweepBrush = Brush.linearGradient(
+        colors = listOf(
+            Color.White.copy(alpha = 0.02f),
+            HyperLime.copy(alpha = 0.18f),
+            Color.White.copy(alpha = 0.02f)
+        ),
+        start = Offset(translateAnim - 300f, translateAnim - 300f),
+        end = Offset(translateAnim, translateAnim)
     )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-            .background(DarkObsidian.copy(alpha = 0.92f))
-            .border(1.dp, GlassBorder, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .specularGlassCard(
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                backgroundColor = SurfaceTier1.copy(alpha = 0.92f),
+                ambientGlow = HyperLime.copy(alpha = 0.12f)
+            )
+            .background(sweepBrush)
             .padding(20.dp)
     ) {
         Column(
@@ -65,33 +91,45 @@ fun ProcessingShimmerView(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(NeonGreen.copy(alpha = alphaAnim))
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+                // Primary status dot with subtle pulsing halo
+                Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .scale(haloScale)
+                            .clip(CircleShape)
+                            .background(HyperLime.copy(alpha = 0.25f))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(HyperLime)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
                 Text(
-                    text = "PROCESSING RAM FRAME BUFFER...",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = NeonGreen.copy(alpha = alphaAnim),
-                    letterSpacing = 1.sp
+                    text = "PROCESSING RAM FRAME BUFFER",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = HyperLime,
+                    letterSpacing = 1.4.sp
                 )
             }
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(20.dp)
+                    .height(18.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(
                         Brush.horizontalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.05f),
-                                Color.White.copy(alpha = 0.15f * alphaAnim),
-                                Color.White.copy(alpha = 0.05f)
+                                Color.White.copy(alpha = 0.04f),
+                                HyperLime.copy(alpha = 0.12f),
+                                Color.White.copy(alpha = 0.04f)
                             )
                         )
                     )
@@ -99,15 +137,15 @@ fun ProcessingShimmerView(
 
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.7f)
-                    .height(16.dp)
+                    .fillMaxWidth(0.68f)
+                    .height(14.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(
                         Brush.horizontalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.05f),
-                                Color.White.copy(alpha = 0.12f * alphaAnim),
-                                Color.White.copy(alpha = 0.05f)
+                                Color.White.copy(alpha = 0.04f),
+                                HyperLime.copy(alpha = 0.10f),
+                                Color.White.copy(alpha = 0.04f)
                             )
                         )
                     )
@@ -116,7 +154,8 @@ fun ProcessingShimmerView(
             Text(
                 text = "Sub-100ms Local ML Kit OCR • Zero Network Calls",
                 fontSize = 11.sp,
-                color = TextSecondaryDark
+                color = TextSecondaryDark,
+                fontWeight = FontWeight.Medium
             )
         }
     }

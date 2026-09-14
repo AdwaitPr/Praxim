@@ -1,12 +1,9 @@
 package com.example.praxim.ui.screens
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,23 +22,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -56,26 +45,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.praxim.data.ScanHistoryEntity
 import com.example.praxim.data.ScanHistoryRepository
 import com.example.praxim.service.OverlayHUDService
-import com.example.praxim.ui.theme.AmoledBlack
-import com.example.praxim.ui.theme.DarkObsidian
-import com.example.praxim.ui.theme.ElectricBlue
+import com.example.praxim.ui.theme.CyberCyan
 import com.example.praxim.ui.theme.GlassBorder
-import com.example.praxim.ui.theme.NeonCyan
-import com.example.praxim.ui.theme.NeonGreen
-import com.example.praxim.ui.theme.SurfaceDark
+import com.example.praxim.ui.theme.HyperLime
+import com.example.praxim.ui.theme.ShieldEmerald
+import com.example.praxim.ui.theme.SurfaceTier1
+import com.example.praxim.ui.theme.SurfaceTier2
 import com.example.praxim.ui.theme.TextPrimaryDark
 import com.example.praxim.ui.theme.TextSecondaryDark
+import com.example.praxim.ui.theme.VoidBase
+import com.example.praxim.ui.theme.specularGlassCard
 
 @Composable
 fun HomeScreen(
@@ -97,7 +84,7 @@ fun HomeScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(AmoledBlack)
+            .background(VoidBase)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -112,14 +99,14 @@ fun HomeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = CircleShape,
-                            color = NeonGreen.copy(alpha = 0.15f),
+                            color = HyperLime.copy(alpha = 0.15f),
                             modifier = Modifier.size(40.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.Bolt,
                                     contentDescription = null,
-                                    tint = NeonGreen,
+                                    tint = HyperLime,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -136,33 +123,35 @@ fun HomeScreen(
                             Text(
                                 text = "Intent-First Screen Intelligence",
                                 fontSize = 11.sp,
-                                color = NeonGreen,
+                                color = HyperLime,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = SurfaceDark,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
+                    Box(
+                        modifier = Modifier
+                            .specularGlassCard(
+                                shape = RoundedCornerShape(12.dp),
+                                backgroundColor = SurfaceTier2.copy(alpha = 0.9f),
+                                ambientGlow = (if (isServiceRunning) HyperLime else Color.Gray).copy(alpha = 0.1f),
+                                elevation = 4.dp
+                            )
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .clip(CircleShape)
-                                    .background(if (isServiceRunning) NeonGreen else Color.Gray)
+                                    .background(if (isServiceRunning) HyperLime else Color.Gray)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = if (isServiceRunning) "ACTIVE" else "STANDBY",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isServiceRunning) NeonGreen else TextSecondaryDark
+                                color = if (isServiceRunning) HyperLime else TextSecondaryDark
                             )
                         }
                     }
@@ -173,14 +162,18 @@ fun HomeScreen(
         // Overlay Permission Banner if missing
         if (!isOverlayPermissionGranted) {
             item {
-                Card(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, Color(0xFFFF9100), RoundedCornerShape(18.dp)),
-                    colors = CardDefaults.cardColors(containerColor = Color(0x22FF9100)),
-                    shape = RoundedCornerShape(18.dp)
+                        .specularGlassCard(
+                            shape = RoundedCornerShape(18.dp),
+                            backgroundColor = Color(0x22FF9100),
+                            ambientGlow = Color(0xFFFF9100).copy(alpha = 0.15f),
+                            elevation = 8.dp
+                        )
+                        .padding(16.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.Shield,
@@ -217,7 +210,7 @@ fun HomeScreen(
                             Text(
                                 text = "Grant Overlay Permission",
                                 fontWeight = FontWeight.Bold,
-                                color = AmoledBlack
+                                color = VoidBase
                             )
                         }
                     }
@@ -227,65 +220,67 @@ fun HomeScreen(
 
         // Main Service Toggle Card
         item {
-            Card(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, GlassBorder, RoundedCornerShape(22.dp)),
-                colors = CardDefaults.cardColors(containerColor = DarkObsidian),
-                shape = RoundedCornerShape(22.dp)
+                    .specularGlassCard(
+                        shape = RoundedCornerShape(22.dp),
+                        backgroundColor = SurfaceTier1.copy(alpha = 0.9f),
+                        ambientGlow = HyperLime.copy(alpha = 0.08f),
+                        elevation = 12.dp
+                    )
+                    .padding(18.dp)
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Micro-HUD Overlay Service",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimaryDark
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Edge-Anchored handle resting at 0% idle CPU",
-                                fontSize = 12.sp,
-                                color = TextSecondaryDark
-                            )
-                        }
-
-                        Switch(
-                            checked = isServiceRunning,
-                            onCheckedChange = { active ->
-                                if (active) {
-                                    if (!Settings.canDrawOverlays(context)) {
-                                        val intent = Intent(
-                                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                            Uri.parse("package:${context.packageName}")
-                                        )
-                                        context.startActivity(intent)
-                                    } else {
-                                        if (onStartOverlayService != null) {
-                                            onStartOverlayService()
-                                        } else {
-                                            OverlayHUDService.start(context)
-                                        }
-                                        isServiceRunning = true
-                                    }
-                                } else {
-                                    OverlayHUDService.stop(context)
-                                    isServiceRunning = false
-                                }
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = AmoledBlack,
-                                checkedTrackColor = NeonGreen,
-                                uncheckedThumbColor = TextSecondaryDark,
-                                uncheckedTrackColor = SurfaceDark
-                            )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Micro-HUD Overlay Service",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimaryDark
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Edge-Anchored handle resting at 0% idle CPU",
+                            fontSize = 12.sp,
+                            color = TextSecondaryDark
                         )
                     }
+
+                    Switch(
+                        checked = isServiceRunning,
+                        onCheckedChange = { active ->
+                            if (active) {
+                                if (!Settings.canDrawOverlays(context)) {
+                                    val intent = Intent(
+                                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        Uri.parse("package:${context.packageName}")
+                                    )
+                                    context.startActivity(intent)
+                                } else {
+                                    if (onStartOverlayService != null) {
+                                        onStartOverlayService()
+                                    } else {
+                                        OverlayHUDService.start(context)
+                                    }
+                                    isServiceRunning = true
+                                }
+                            } else {
+                                OverlayHUDService.stop(context)
+                                isServiceRunning = false
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = VoidBase,
+                            checkedTrackColor = HyperLime,
+                            uncheckedThumbColor = TextSecondaryDark,
+                            uncheckedTrackColor = SurfaceTier2
+                        )
+                    )
                 }
             }
         }
@@ -298,20 +293,20 @@ fun HomeScreen(
             ) {
                 Button(
                     onClick = onNavigateSimulator,
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                    colors = ButtonDefaults.buttonColors(containerColor = HyperLime),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = null,
-                        tint = AmoledBlack
+                        tint = VoidBase
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Test Simulator",
-                        fontWeight = FontWeight.Bold,
-                        color = AmoledBlack,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = VoidBase,
                         fontSize = 13.sp
                     )
                 }
@@ -325,7 +320,7 @@ fun HomeScreen(
                     Icon(
                         imageVector = Icons.Default.History,
                         contentDescription = null,
-                        tint = NeonCyan
+                        tint = CyberCyan
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
@@ -343,7 +338,7 @@ fun HomeScreen(
             Text(
                 text = "ZERO-CLOUD ARCHITECTURE GUARANTEES",
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.ExtraBold,
                 color = TextSecondaryDark,
                 letterSpacing = 1.2.sp
             )
@@ -354,47 +349,104 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Card(
+                // 100% Private - Tinted ShieldEmerald Icon Badge
+                Box(
                     modifier = Modifier
                         .weight(1f)
-                        .border(1.dp, GlassBorder, RoundedCornerShape(16.dp)),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-                    shape = RoundedCornerShape(16.dp)
+                        .specularGlassCard(
+                            shape = RoundedCornerShape(16.dp),
+                            backgroundColor = SurfaceTier2.copy(alpha = 0.85f),
+                            ambientGlow = ShieldEmerald.copy(alpha = 0.08f),
+                            elevation = 8.dp
+                        )
+                        .padding(14.dp)
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = NeonGreen)
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Column {
+                        Surface(
+                            shape = CircleShape,
+                            color = ShieldEmerald.copy(alpha = 0.15f),
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = ShieldEmerald,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(text = "100% Private", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimaryDark)
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(text = "Zero Cloud or Network calls", fontSize = 10.sp, color = TextSecondaryDark)
                     }
                 }
 
-                Card(
+                // RAM Buffer - Tinted CyberCyan Icon Badge
+                Box(
                     modifier = Modifier
                         .weight(1f)
-                        .border(1.dp, GlassBorder, RoundedCornerShape(16.dp)),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-                    shape = RoundedCornerShape(16.dp)
+                        .specularGlassCard(
+                            shape = RoundedCornerShape(16.dp),
+                            backgroundColor = SurfaceTier2.copy(alpha = 0.85f),
+                            ambientGlow = CyberCyan.copy(alpha = 0.08f),
+                            elevation = 8.dp
+                        )
+                        .padding(14.dp)
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Icon(imageVector = Icons.Default.Memory, contentDescription = null, tint = NeonCyan)
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Column {
+                        Surface(
+                            shape = CircleShape,
+                            color = CyberCyan.copy(alpha = 0.15f),
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Memory,
+                                    contentDescription = null,
+                                    tint = CyberCyan,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(text = "RAM Buffer", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimaryDark)
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(text = "Zero disk storage capture", fontSize = 10.sp, color = TextSecondaryDark)
                     }
                 }
 
-                Card(
+                // <100ms OCR - Tinted HyperLime Icon Badge
+                Box(
                     modifier = Modifier
                         .weight(1f)
-                        .border(1.dp, GlassBorder, RoundedCornerShape(16.dp)),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-                    shape = RoundedCornerShape(16.dp)
+                        .specularGlassCard(
+                            shape = RoundedCornerShape(16.dp),
+                            backgroundColor = SurfaceTier2.copy(alpha = 0.85f),
+                            ambientGlow = HyperLime.copy(alpha = 0.08f),
+                            elevation = 8.dp
+                        )
+                        .padding(14.dp)
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Icon(imageVector = Icons.Default.Speed, contentDescription = null, tint = ElectricBlue)
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Column {
+                        Surface(
+                            shape = CircleShape,
+                            color = HyperLime.copy(alpha = 0.15f),
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Bolt,
+                                    contentDescription = null,
+                                    tint = HyperLime,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(text = "<100ms OCR", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimaryDark)
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(text = "Instant entity intent routing", fontSize = 10.sp, color = TextSecondaryDark)
                     }
                 }
@@ -411,7 +463,7 @@ fun HomeScreen(
                 Text(
                     text = "RECENT ON-DEVICE PARSED ENTITIES",
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     color = TextSecondaryDark,
                     letterSpacing = 1.2.sp
                 )
@@ -419,7 +471,7 @@ fun HomeScreen(
                     Text(
                         text = "View All",
                         fontSize = 11.sp,
-                        color = NeonGreen,
+                        color = HyperLime,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(4.dp)
                     )
@@ -429,17 +481,19 @@ fun HomeScreen(
 
         if (recentScans.isEmpty()) {
             item {
-                Card(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, GlassBorder, RoundedCornerShape(18.dp)),
-                    colors = CardDefaults.cardColors(containerColor = DarkObsidian),
-                    shape = RoundedCornerShape(18.dp)
+                        .specularGlassCard(
+                            shape = RoundedCornerShape(18.dp),
+                            backgroundColor = SurfaceTier1.copy(alpha = 0.9f),
+                            ambientGlow = CyberCyan.copy(alpha = 0.05f),
+                            elevation = 8.dp
+                        )
+                        .padding(24.dp)
                 ) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -467,17 +521,19 @@ fun HomeScreen(
             }
         } else {
             items(recentScans.take(4), key = { it.id }) { scan ->
-                Card(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, GlassBorder, RoundedCornerShape(14.dp)),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-                    shape = RoundedCornerShape(14.dp)
+                        .specularGlassCard(
+                            shape = RoundedCornerShape(14.dp),
+                            backgroundColor = SurfaceTier2.copy(alpha = 0.85f),
+                            ambientGlow = HyperLime.copy(alpha = 0.05f),
+                            elevation = 6.dp
+                        )
+                        .padding(12.dp)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -499,12 +555,12 @@ fun HomeScreen(
 
                         Surface(
                             shape = CircleShape,
-                            color = NeonGreen.copy(alpha = 0.1f)
+                            color = HyperLime.copy(alpha = 0.12f)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = NeonGreen,
+                                tint = HyperLime,
                                 modifier = Modifier
                                     .padding(6.dp)
                                     .size(16.dp)
