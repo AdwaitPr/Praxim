@@ -147,3 +147,12 @@ dependencies {
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
 }
+
+tasks.register<Exec>("checkZeroEgressPolicy") {
+    group = "verification"
+    description = "Audits merged Android manifest to enforce zero network permissions."
+    workingDir = rootDir
+    dependsOn("processDebugMainManifest")
+    commandLine("bash", "${rootDir}/scripts/verify_zero_egress.sh")
+}
+
