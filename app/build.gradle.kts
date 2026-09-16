@@ -24,7 +24,6 @@ android {
 
     ndk {
         abiFilters.add("arm64-v8a")
-        abiFilters.add("armeabi-v7a")
     }
   }
 
@@ -69,7 +68,7 @@ android {
   }
   externalNativeBuild {
     cmake {
-      path = file("../engine-praxim/core-capture/CMakeLists.txt")
+      path = file("src/main/cpp/CMakeLists.txt")
       version = "3.22.1"
     }
   }

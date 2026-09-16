@@ -1,39 +1,21 @@
 cmake_minimum_required(VERSION 3.22.1)
 
-project("praxim_security_engine")
+project("praxim_capture")
 
-set(CMAKE_CXX_STANDARD 17)
-
-# Enable LTO and optimizations
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -flto")
-
-# NEON flags (handled primarily via ABI, but explicit definition helps some headers)
-add_definitions(-DANDROID_ARM_NEON=ON)
-
-# For 32-bit ARM we add neon FPU flags if needed (usually handled by Android toolchain)
-if(${CMAKE_ANDROID_ARCH_ABI} MATCHES "^armeabi-v7a")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfpu=neon")
-endif()
-
-add_library(
-        praxim_security_engine
-        SHARED
+add_library(praxim_capture SHARED
         src/main/cpp/praxim_security_engine.cpp
-)
+        src/main/cpp/praxim_jni_bridge.cpp)
 
-find_library(
-        log-lib
-        log
-)
+target_include_directories(praxim_capture PRIVATE
+        src/main/cpp/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../core-resilience/src/main/cpp/include)
 
-find_library(
-        android-lib
-        android
-)
+find_library(log-lib log)
+find_library(android-lib android)
+find_library(nativewindow-lib nativewindow)
 
-target_link_libraries(
-        praxim_security_engine
-        ${log-lib}
+target_link_libraries(praxim_capture
+        praxim_resilience
         ${android-lib}
-        jnigraphics
-)
+        ${nativewindow-lib}
+        ${log-lib})

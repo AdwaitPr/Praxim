@@ -1,175 +1,180 @@
-#include "include/praxim_security_engine.h"
-#include <android/log.h>
-#include <arm_neon.h>
+#include "praxim_security_engine.hpp"
+#include "praxim_signal_guard.hpp"
+#include <time.h>
+#include <atomic>
+#include <mutex>
+#include <limits>
 
-#define LOG_TAG "PraximSecurityEngine"
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+namespace praxim {
+namespace capture {
 
-const uint8_t NOISE_THRESHOLD = 3;
+namespace {
+    enum class CircuitBreakerState {
+        CLOSED,
+        OPEN,
+        HALF_OPEN
+    };
 
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_praxim_core_capture_NativeSecureDetector_nativeIsBlankFrameRgba(
-    JNIEnv *env,
-    jobject thiz,
-    jobject buffer,
-    jint width,
-    jint height,
-    jint rowStrideBytes) {
+    std::mutex g_cbMutex;
+    CircuitBreakerState g_cbState = CircuitBreakerState::CLOSED;
+    int g_consecutiveFailures = 0;
+    time_t g_lastTripTime = 0;
 
-    if (!buffer) return JNI_TRUE;
+    const int MAX_FAILURES = 3;
+    const time_t COOLDOWN_SECONDS = 10;
+    const long TIMEOUT_NS = 2000000; // 2.0ms
 
-    uint8_t *data = static_cast<uint8_t*>(env->GetDirectBufferAddress(buffer));
-    if (!data) {
-        LOGE("Failed to get direct buffer address for RGBA.");
-        return JNI_TRUE;
+    bool CheckCircuitBreaker() {
+        std::lock_guard<std::mutex> lock(g_cbMutex);
+        if (g_cbState == CircuitBreakerState::OPEN) {
+            time_t now = time(nullptr);
+            if (now - g_lastTripTime >= COOLDOWN_SECONDS) {
+                g_cbState = CircuitBreakerState::HALF_OPEN;
+                return true;
+            }
+            return false;
+        }
+        return true;
     }
 
-    const int rowStep = 32;
-    const int colStep = 16;
-
-    // We only process complete 16-pixel blocks (64 bytes)
-    int vecCols = (width / colStep) * colStep;
-
-    uint8x16_t threshold_vec = vdupq_n_u8(NOISE_THRESHOLD);
-
-    for (int y = 0; y < height; y += rowStep) {
-        const uint8_t *rowPtr = data + (y * rowStrideBytes);
-
-        for (int x = 0; x < vecCols; x += colStep) {
-            uint8x16x4_t rgba = vld4q_u8(rowPtr + (x * 4));
-
-            uint8x16_t max_rg = vmaxq_u8(rgba.val[0], rgba.val[1]);
-            uint8x16_t max_rgb = vmaxq_u8(max_rg, rgba.val[2]);
-
-            // Compare max(R,G,B) against threshold
-            uint8x16_t mask = vcgtq_u8(max_rgb, threshold_vec);
-
-            // Extract and reduce to see if any pixel exceeds the threshold
-#if defined(__aarch64__)
-            uint8_t max_val = vmaxvq_u8(mask);
-            if (max_val > 0) {
-                return JNI_FALSE; // Not blank
-            }
-#else
-            uint8x8_t mask_half = vorr_u8(vget_low_u8(mask), vget_high_u8(mask));
-            uint8x8_t max1 = vpmax_u8(mask_half, mask_half);
-            uint8x8_t max2 = vpmax_u8(max1, max1);
-            uint8x8_t max3 = vpmax_u8(max2, max2);
-            if (vget_lane_u8(max3, 0) > 0) {
-                return JNI_FALSE;
-            }
-#endif
-        }
-
-        // Boundary loop for trailing pixels
-        for (int x = vecCols; x < width; x++) {
-            const uint8_t *pixel = rowPtr + (x * 4);
-            uint8_t r = pixel[0];
-            uint8_t g = pixel[1];
-            uint8_t b = pixel[2];
-            uint8_t max_rgb = (r > g) ? (r > b ? r : b) : (g > b ? g : b);
-            if (max_rgb > NOISE_THRESHOLD) {
-                return JNI_FALSE;
-            }
+    void RecordSuccess() {
+        std::lock_guard<std::mutex> lock(g_cbMutex);
+        if (g_cbState == CircuitBreakerState::HALF_OPEN) {
+            g_cbState = CircuitBreakerState::CLOSED;
+            g_consecutiveFailures = 0;
+        } else if (g_cbState == CircuitBreakerState::CLOSED) {
+            g_consecutiveFailures = 0;
         }
     }
 
-    return JNI_TRUE; // Blank frame
+    void RecordFailure() {
+        std::lock_guard<std::mutex> lock(g_cbMutex);
+        if (g_cbState == CircuitBreakerState::HALF_OPEN) {
+            g_cbState = CircuitBreakerState::OPEN;
+            g_lastTripTime = time(nullptr);
+        } else if (g_cbState == CircuitBreakerState::CLOSED) {
+            g_consecutiveFailures++;
+            if (g_consecutiveFailures >= MAX_FAILURES) {
+                g_cbState = CircuitBreakerState::OPEN;
+                g_lastTripTime = time(nullptr);
+            }
+        }
+    }
 }
 
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_praxim_core_capture_NativeSecureDetector_nativeIsBlankFrameYuv(
-    JNIEnv *env,
-    jobject thiz,
-    jobject buffer,
-    jint width,
-    jint height,
-    jint rowStrideBytes,
-    jint pixelStrideBytes) {
-
-    if (!buffer) return JNI_TRUE;
-
-    uint8_t *data = static_cast<uint8_t*>(env->GetDirectBufferAddress(buffer));
-    if (!data) {
-        LOGE("Failed to get direct buffer address for YUV.");
-        return JNI_TRUE;
-    }
-
-    const int rowStep = 32;
-    const int colStep = 16;
-
-    uint8x16_t threshold_vec = vdupq_n_u8(NOISE_THRESHOLD);
-
-    if (pixelStrideBytes == 1) {
-        int vecCols = (width / colStep) * colStep;
-
-        for (int y = 0; y < height; y += rowStep) {
-            const uint8_t *rowPtr = data + (y * rowStrideBytes);
-
-            for (int x = 0; x < vecCols; x += colStep) {
-                uint8x16_t y_vals = vld1q_u8(rowPtr + x);
-
-                uint8x16_t mask = vcgtq_u8(y_vals, threshold_vec);
-
-#if defined(__aarch64__)
-                uint8_t max_val = vmaxvq_u8(mask);
-                if (max_val > 0) {
-                    return JNI_FALSE;
-                }
-#else
-                uint8x8_t mask_half = vorr_u8(vget_low_u8(mask), vget_high_u8(mask));
-                uint8x8_t max1 = vpmax_u8(mask_half, mask_half);
-                uint8x8_t max2 = vpmax_u8(max1, max1);
-                uint8x8_t max3 = vpmax_u8(max2, max2);
-                if (vget_lane_u8(max3, 0) > 0) {
-                    return JNI_FALSE;
-                }
-#endif
-            }
-
-            // Boundary loop
-            for (int x = vecCols; x < width; x++) {
-                if (rowPtr[x] > NOISE_THRESHOLD) {
-                    return JNI_FALSE;
-                }
-            }
-        }
-    } else {
-        // Fallback for strided Y plane
-        for (int y = 0; y < height; y += rowStep) {
-            const uint8_t *rowPtr = data + (y * rowStrideBytes);
-            for (int x = 0; x < width; x += colStep) { // Use colStep to skip pixels if needed, or scan all
-                if (rowPtr[x * pixelStrideBytes] > NOISE_THRESHOLD) {
-                    return JNI_FALSE;
-                }
-            }
-        }
-    }
-
-    return JNI_TRUE;
+void SecurityEngine::ResetCircuitBreaker() {
+    std::lock_guard<std::mutex> lock(g_cbMutex);
+    g_cbState = CircuitBreakerState::CLOSED;
+    g_consecutiveFailures = 0;
+    g_lastTripTime = 0;
 }
 
-#include <android/hardware_buffer.h>
-#include <android/hardware_buffer_jni.h>
+AuditResult SecurityEngine::ValidateAndAuditBuffer(AHardwareBuffer* buffer, bool probePixels) {
+    AuditResult result;
+    result.status = SecurityStatus::UnknownFailure;
+    result.latencyUs = 0;
+    result.metadata = {0, 0, 0, 0};
 
-extern "C" JNIEXPORT jint JNICALL
-Java_com_praxim_engine_capture_NativeCaptureCore_validateBufferSecurity(
-    JNIEnv *env,
-    jobject thiz,
-    jobject hardwareBuffer) {
+    if (!buffer) {
+        result.status = SecurityStatus::InvalidHardwareBufferRef;
+        return result;
+    }
 
-    if (!hardwareBuffer) return 0;
+    if (!CheckCircuitBreaker()) {
+        result.status = SecurityStatus::CircuitBreakerTripped;
+        return result;
+    }
 
-    AHardwareBuffer* buffer = AHardwareBuffer_fromHardwareBuffer(env, hardwareBuffer);
-    if (!buffer) return 0;
+    struct timespec start_time, end_time;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start_time);
 
     AHardwareBuffer_Desc desc;
     AHardwareBuffer_describe(buffer, &desc);
 
-    // Check if the buffer has PROTECTED_CONTENT usage flag
+    result.metadata.width = desc.width;
+    result.metadata.height = desc.height;
+    result.metadata.stride = desc.stride;
+    result.metadata.format = desc.format;
+
     if ((desc.usage & AHARDWAREBUFFER_USAGE_PROTECTED_CONTENT) != 0) {
-        return 1; // Secure/DRM protected
+        RecordFailure();
+        result.status = SecurityStatus::ProtectedSurfaceViolation;
+        return result;
     }
 
-    return 0; // Safe
+    if ((desc.usage & AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN) != AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN) {
+        RecordFailure();
+        result.status = SecurityStatus::MissingCpuReadPermission;
+        return result;
+    }
+
+    if (desc.format != AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM &&
+        desc.format != AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM) {
+        RecordFailure();
+        result.status = SecurityStatus::UnsupportedPixelFormat;
+        return result;
+    }
+
+    if (desc.width == 0 || desc.height == 0 || desc.stride < desc.width) {
+        RecordFailure();
+        result.status = SecurityStatus::InvalidGeometryOrStride;
+        return result;
+    }
+
+    // Check for potential integer overflow when calculating size
+    uint64_t max_bytes = static_cast<uint64_t>(desc.height - 1) * desc.stride * 4 + static_cast<uint64_t>(desc.width - 1) * 4 + 4;
+    if (max_bytes > std::numeric_limits<size_t>::max()) {
+        RecordFailure();
+        result.status = SecurityStatus::InvalidGeometryOrStride;
+        return result;
+    }
+
+    if (probePixels) {
+        void* virtualAddress = nullptr;
+        int lockResult = AHardwareBuffer_lock(buffer, AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN, -1, nullptr, &virtualAddress);
+
+        if (lockResult != 0 || !virtualAddress) {
+            RecordFailure();
+            result.status = SecurityStatus::NativeLockFailed;
+            return result;
+        }
+
+        auto guardResult = praxim::resilience::SignalGuard::ExecuteGuarded([&]() {
+            volatile uint8_t* pixels = static_cast<volatile uint8_t*>(virtualAddress);
+
+            // Probe first pixel
+            volatile uint8_t first_pixel = pixels[0];
+            (void)first_pixel;
+
+            // Probe last scanline boundary pixel
+            size_t last_pixel_offset = ((desc.height - 1) * desc.stride * 4) + ((desc.width - 1) * 4);
+            volatile uint8_t last_pixel = pixels[last_pixel_offset];
+            (void)last_pixel;
+        });
+
+        AHardwareBuffer_unlock(buffer, nullptr);
+
+        if (!guardResult.success) {
+            RecordFailure();
+            result.status = SecurityStatus::PosixSignalTrapped;
+            return result;
+        }
+
+        if (guardResult.latencyNs > TIMEOUT_NS) {
+            RecordFailure();
+            result.status = SecurityStatus::ExecutionTimeout;
+            return result;
+        }
+    }
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end_time);
+    long latencyNs = (end_time.tv_sec - start_time.tv_sec) * 1000000000L + (end_time.tv_nsec - start_time.tv_nsec);
+    result.latencyUs = static_cast<uint32_t>(latencyNs / 1000);
+
+    RecordSuccess();
+    result.status = SecurityStatus::Permitted;
+    return result;
 }
+
+} // namespace capture
+} // namespace praxim
