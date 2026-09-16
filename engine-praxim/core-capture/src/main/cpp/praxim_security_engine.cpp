@@ -148,3 +148,28 @@ Java_com_praxim_core_capture_NativeSecureDetector_nativeIsBlankFrameYuv(
 
     return JNI_TRUE;
 }
+
+#include <android/hardware_buffer.h>
+#include <android/hardware_buffer_jni.h>
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_praxim_engine_capture_NativeCaptureCore_validateBufferSecurity(
+    JNIEnv *env,
+    jobject thiz,
+    jobject hardwareBuffer) {
+
+    if (!hardwareBuffer) return 0;
+
+    AHardwareBuffer* buffer = AHardwareBuffer_fromHardwareBuffer(env, hardwareBuffer);
+    if (!buffer) return 0;
+
+    AHardwareBuffer_Desc desc;
+    AHardwareBuffer_describe(buffer, &desc);
+
+    // Check if the buffer has PROTECTED_CONTENT usage flag
+    if ((desc.usage & AHARDWAREBUFFER_USAGE_PROTECTED_CONTENT) != 0) {
+        return 1; // Secure/DRM protected
+    }
+
+    return 0; // Safe
+}
