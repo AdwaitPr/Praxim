@@ -41,6 +41,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Job
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,9 +65,11 @@ class OverlayHUDService : LifecycleService() {
 
     private var windowManager: PraximWindowManager? = null
     private var screenCaptureManager: ScreenCaptureManager? = null
+    private val frameJob = AtomicReference<Job?>(null)
 
     private val _displayMode = MutableStateFlow<HudDisplayMode>(HudDisplayMode.Collapsed)
-    val displayMode = _displayMode.asStateFlow()
+    val displayMode: StateFlow<HudDisplayMode> = _displayMode
+
 
     private val _hudSettings = MutableStateFlow(HudSettings())
     val hudSettings = _hudSettings.asStateFlow()
