@@ -17,6 +17,20 @@ class SpatialEntityExtractor {
         private val PHONE_PATTERN = Pattern.compile("\\+?\\d{10,13}")
         private val AMOUNT_PATTERN = Pattern.compile("(?:Rs\\.?|INR|₹)\\s*([0-9,]+(?:\\.[0-9]{1,2})?)")
 
+        suspend fun extractFromMediaImage(image: android.media.Image): Pair<String, List<ExtractedEntity>> {
+            val textRecognitionClient = com.google.mlkit.vision.text.TextRecognition.getClient(com.google.mlkit.vision.text.latin.TextRecognizerOptions.DEFAULT_OPTIONS)
+            val mlkitImage = com.google.mlkit.vision.common.InputImage.fromMediaImage(image, 0)
+            return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+                textRecognitionClient.process(mlkitImage)
+                    .addOnSuccessListener { result ->
+                        cont.resumeWith(Result.success(Pair(result.text, extractEntities(result))))
+                    }
+                    .addOnFailureListener { e ->
+                        cont.resumeWith(Result.failure(e))
+                    }
+            }
+        }
+
         fun extractEntities(mlkitText: Text): List<ExtractedEntity> {
             val entities = mutableListOf<ExtractedEntity>()
             val lines = clusterLines(mlkitText)
