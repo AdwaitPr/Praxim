@@ -90,7 +90,7 @@ dependencies {
   implementation("net.zetetic:android-database-sqlcipher:4.5.4")
   implementation("androidx.room:room-runtime:2.6.1")
   implementation("androidx.room:room-ktx:2.6.1")
-  ksp("androidx.room:room-compiler:2.6.1")
+  "ksp"(libs.androidx.room.compiler)
 
   androidTestImplementation(libs.androidx.room.testing)
   implementation(libs.androidx.paging.runtime)
@@ -134,4 +134,11 @@ dependencies {
   androidTestImplementation(libs.androidx.runner)
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   debugImplementation(libs.androidx.compose.ui.tooling)
+}
+tasks.register<Exec>("checkZeroEgressPolicy") {
+    group = "verification"
+    description = "Audits merged Android manifest to enforce zero network permissions."
+    workingDir = rootDir
+    dependsOn("processDebugMainManifest")
+    commandLine("bash", "${rootDir}/scripts/verify_zero_egress.sh")
 }
